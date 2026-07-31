@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -19,7 +20,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,12 +34,18 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nmrf.remote.ui.components.HeaderChip
 import com.nmrf.remote.ui.components.ScreenHeader
 import com.nmrf.remote.ui.components.SignalBar
 import com.nmrf.remote.ui.theme.MatrixGreen
 import com.nmrf.remote.ui.theme.MatrixGreenDark
 import com.nmrf.remote.ui.theme.MatrixText
 import com.nmrf.remote.ui.theme.MatrixTextDim
+
+private const val WIFI_HELP =
+    "Sichtbare 2.4/5-GHz-Netze. Der Graph oben zeigt jeden AP an seinem Kanal: Höhe = Signal (RSSI), " +
+        "Breite = Kanalbreite; Überlappungen = Störungen. Liste nach Signal sortiert. " +
+        "Netz antippen → Details + RSSI-Wasserfall. SCAN stößt eine neue Messung an (Android drosselt ~4/2 min)."
 
 @Composable
 fun WifiAnalyzerScreen(
@@ -66,7 +72,12 @@ fun WifiAnalyzerScreen(
 @Composable
 private fun WifiList(state: UiState, vm: WifiAnalyzerViewModel, onSelect: (AccessPoint) -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("WLAN-ANALYZER", "${state.visible.size} Netze · ${if (state.scanning) "scannt…" else "bereit"}")
+        ScreenHeader(
+            "WLAN-ANALYZER",
+            "${state.visible.size} Netze · ${if (state.scanning) "scannt…" else "bereit"}",
+            help = WIFI_HELP,
+            action = { HeaderChip("SCAN") { vm.rescan() } },
+        )
         Column(Modifier.padding(horizontal = 12.dp)) {
             val bands = listOf(Band.GHZ_2_4 to "2.4 GHz", Band.GHZ_5 to "5 GHz")
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
@@ -101,6 +112,7 @@ private fun ApRow(ap: AccessPoint, onClick: () -> Unit) {
         }
         Column(horizontalAlignment = Alignment.End) {
             Text("${ap.rssi}", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = MatrixGreen)
+            Spacer(Modifier.height(3.dp))
             SignalBar(ap.rssi)
         }
     }

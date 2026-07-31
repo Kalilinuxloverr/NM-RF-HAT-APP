@@ -1,8 +1,9 @@
 package com.nmrf.remote.wifi
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,14 +14,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
+import com.nmrf.remote.ui.components.HelpButton
 import com.nmrf.remote.ui.components.InfoRow
 import com.nmrf.remote.ui.components.MatrixCard
 import com.nmrf.remote.ui.components.SectionLabel
-import com.nmrf.remote.ui.components.heat
+import com.nmrf.remote.ui.components.WaterfallStrip
 import com.nmrf.remote.ui.theme.MatrixGreen
 import com.nmrf.remote.ui.theme.MatrixText
 
@@ -55,29 +56,19 @@ fun WifiDetailScreen(ap: AccessPoint, history: List<Int>, onBack: () -> Unit) {
             InfoRow("RSSI", "${ap.rssi} dBm")
         }
 
-        SectionLabel("RSSI-WASSERFALL (pro Scan)")
-        RssiWaterfall(history, Modifier.fillMaxWidth().height(90.dp))
-        Text(
-            if (history.size < 2) "sammelt Messwerte… (Wi-Fi-Scan ~alle 15–30 s)"
-            else "${history.size} Messpunkte · links alt → rechts neu",
-            style = MaterialTheme.typography.bodySmall, color = MatrixText,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionLabel("RSSI-WASSERFALL")
+            Spacer(Modifier.width(8.dp))
+            HelpButton(
+                "Signalstärke (RSSI) über die Zeit. Jede Spalte = ein Wi-Fi-Scan (~alle 15–30 s), " +
+                    "links alt → rechts neu. Helle/weiße Bereiche = stärkeres Signal, die Linie ist der Verlauf. " +
+                    "Gitterlinien: −90/−70/−50/−30 dBm.",
+            )
+        }
+        WaterfallStrip(history, Modifier.fillMaxWidth().height(120.dp))
 
         SectionLabel("CAPABILITIES")
         Text(ap.capabilities.ifBlank { "—" }, style = MaterialTheme.typography.bodySmall, color = MatrixText)
         Spacer(Modifier.height(24.dp))
-    }
-}
-
-@Composable
-private fun RssiWaterfall(history: List<Int>, modifier: Modifier) {
-    Canvas(modifier) {
-        if (history.isEmpty()) return@Canvas
-        val colW = size.width / history.size
-        history.forEachIndexed { i, r ->
-            val norm = ((r + 100f) / 70f).coerceIn(0f, 1f)
-            drawRect(heat(norm), topLeft = Offset(i * colW, 0f), size = Size(colW + 1f, size.height))
-        }
     }
 }

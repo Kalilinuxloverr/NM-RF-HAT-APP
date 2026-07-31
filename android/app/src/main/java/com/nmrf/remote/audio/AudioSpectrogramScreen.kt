@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -15,10 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
+import com.nmrf.remote.ui.components.HeaderChip
 import com.nmrf.remote.ui.components.ScreenHeader
 import com.nmrf.remote.ui.components.heat
-import com.nmrf.remote.ui.theme.MatrixTextDim
 import com.nmrf.remote.wifi.PermissionInfo
+
+private const val AUDIO_HELP =
+    "Live-FFT des Mikrofons. Spektrogramm: unten tiefe, oben hohe Frequenzen; rechts = jetzt, " +
+        "nach links wandernd; Helligkeit = Pegel. Unten die aktuellen Frequenz-Balken. " +
+        "STOP/START pausiert die Aufnahme. (Pfeif oder klatsch rein — die Muster wandern live.)"
 
 @Composable
 fun AudioSpectrogramScreen(
@@ -28,22 +31,22 @@ fun AudioSpectrogramScreen(
 ) {
     if (!hasPermission) {
         Column(Modifier.fillMaxSize()) {
-            ScreenHeader("AUDIO-SPEKTROGRAMM", "Mikrofon · FFT · 44.1 kHz")
+            ScreenHeader("AUDIO-SPEKTROGRAMM", "Mikrofon · FFT · 44.1 kHz", help = AUDIO_HELP)
             PermissionInfo("Mikrofon-Berechtigung nötig", onRequestPermission)
         }
         return
     }
     val state by vm.state.collectAsState()
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("AUDIO-SPEKTROGRAMM", "Mikrofon · FFT 2048 · 44.1 kHz")
+        ScreenHeader(
+            "AUDIO-SPEKTROGRAMM",
+            "FFT 2048 · 44.1 kHz · ${if (state.running) "läuft" else "pause"}",
+            help = AUDIO_HELP,
+            action = { HeaderChip(if (state.running) "STOP" else "START") { vm.setEnabled(!state.running) } },
+        )
         Spectrogram(
             state.spectrogram,
             Modifier.fillMaxWidth().weight(1f).padding(horizontal = 8.dp, vertical = 6.dp),
-        )
-        Text(
-            "unten = tiefe Frequenzen · rechts = jetzt · Helligkeit = Pegel",
-            style = MaterialTheme.typography.bodySmall, color = MatrixTextDim,
-            modifier = Modifier.padding(horizontal = 8.dp),
         )
         SpectrumBars(state.spectrum, Modifier.fillMaxWidth().height(88.dp).padding(8.dp))
     }
