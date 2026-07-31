@@ -49,6 +49,8 @@ fun AppRoot() {
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     val tabs = Tab.entries
     Scaffold(
+        modifier = Modifier.appBackground(),
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         bottomBar = {
             NavigationBar {
                 tabs.forEachIndexed { i, t ->
