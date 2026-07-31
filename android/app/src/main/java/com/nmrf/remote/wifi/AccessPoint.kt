@@ -11,6 +11,7 @@ data class AccessPoint(
     val channel: Int,
     val band: Band,
     val widthMhz: Int,       // 20/40/80/160
+    val capabilities: String = "",
 ) {
     companion object {
         fun fromScan(r: ScanResult): AccessPoint {
@@ -35,6 +36,7 @@ data class AccessPoint(
                 channel = RadioMath.channelOf(r.frequency),
                 band = RadioMath.bandOf(r.frequency),
                 widthMhz = width,
+                capabilities = r.capabilities ?: "",
             )
         }
     }

@@ -5,14 +5,19 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
 private val NmrfColors = darkColorScheme(
-    primary = NeonGreen,
-    secondary = NeonCyan,
-    tertiary = NeonMagenta,
-    background = DarkBg,
-    surface = DarkSurface,
-    onPrimary = DarkBg,
-    onBackground = OnDark,
-    onSurface = OnDark,
+    primary = MatrixGreen,
+    onPrimary = MatrixBlack,
+    secondary = MatrixGreenDim,
+    onSecondary = MatrixBlack,
+    tertiary = NeonCyan,
+    background = MatrixBlack,
+    onBackground = MatrixText,
+    surface = MatrixPanel,
+    onSurface = MatrixText,
+    surfaceVariant = MatrixPanel,
+    onSurfaceVariant = MatrixTextDim,
+    outline = MatrixGreenDark,
+    error = MatrixRed,
 )
 
 @Composable

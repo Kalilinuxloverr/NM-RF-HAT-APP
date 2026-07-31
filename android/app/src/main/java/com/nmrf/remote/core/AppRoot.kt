@@ -3,10 +3,15 @@ package com.nmrf.remote.core
 import android.Manifest
 import android.os.Build
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,21 +24,31 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.nmrf.remote.audio.AudioSpectrogramScreen
+import com.nmrf.remote.audio.AudioSpectrogramViewModel
+import com.nmrf.remote.audio.MicAudioSource
 import com.nmrf.remote.ble.BleScanner
 import com.nmrf.remote.ble.BleScannerScreen
 import com.nmrf.remote.ble.BleScannerViewModel
 import com.nmrf.remote.ble.GattProbe
+import com.nmrf.remote.ui.theme.MatrixGreen
+import com.nmrf.remote.ui.theme.MatrixGreenDark
+import com.nmrf.remote.ui.theme.MatrixPanel
+import com.nmrf.remote.ui.theme.MatrixTextDim
 import com.nmrf.remote.wifi.WifiAnalyzerScreen
 import com.nmrf.remote.wifi.WifiAnalyzerViewModel
 import com.nmrf.remote.wifi.WifiScanner
 
 private enum class Tab(val label: String, val glyph: String) {
-    WIFI("WLAN", "📶"), BLE("BLE", "🔵"), AUDIO("Audio", "🎙"), HAT("HAT", "🛰")
+    WIFI("WLAN", "📶"), BLE("BLE", "🔵"), AUDIO("AUDIO", "🎚"), HAT("HAT", "🛰")
 }
 
 @Composable
@@ -50,15 +65,22 @@ fun AppRoot() {
     val tabs = Tab.entries
     Scaffold(
         modifier = Modifier.appBackground(),
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        containerColor = Color.Transparent,
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor = MatrixPanel, contentColor = MatrixGreen) {
                 tabs.forEachIndexed { i, t ->
                     NavigationBarItem(
                         selected = tabIndex == i,
                         onClick = { tabIndex = i },
                         icon = { Text(t.glyph, fontSize = 18.sp) },
-                        label = { Text(t.label) },
+                        label = { Text(t.label, style = MaterialTheme.typography.labelMedium) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MatrixGreen,
+                            selectedTextColor = MatrixGreen,
+                            unselectedIconColor = MatrixTextDim,
+                            unselectedTextColor = MatrixTextDim,
+                            indicatorColor = MatrixGreenDark,
+                        ),
                     )
                 }
             }
@@ -68,8 +90,12 @@ fun AppRoot() {
             when (tabs[tabIndex]) {
                 Tab.WIFI -> WifiTab()
                 Tab.BLE -> BleTab()
-                Tab.AUDIO -> Placeholder("Audio-Spektrogramm — kommt (Modul 3)")
-                Tab.HAT -> Placeholder("HAT-Fernsteuerung — kommt (Modul 4/5)")
+                Tab.AUDIO -> AudioTab()
+                Tab.HAT -> Placeholder(
+                    "HAT-STEUERUNG",
+                    "Modul 4/5: BLE-Bridge zum NM-RF-HAT + Attacken (SubGHz/IR/NFC/Deauth). " +
+                        "Braucht den ESP32-Flash der Firmware — kommt als Nächstes.",
+                )
             }
         }
     }
@@ -80,9 +106,7 @@ private fun WifiTab() {
     val context = LocalContext.current
     val perm = rememberPermissions(listOf(Manifest.permission.ACCESS_FINE_LOCATION))
     val vm: WifiAnalyzerViewModel = viewModel(
-        factory = viewModelFactory {
-            initializer { WifiAnalyzerViewModel(WifiScanner(context.applicationContext)) }
-        },
+        factory = viewModelFactory { initializer { WifiAnalyzerViewModel(WifiScanner(context.applicationContext)) } },
     )
     LaunchedEffect(perm.allGranted) { if (perm.allGranted) vm.rescan() }
     WifiAnalyzerScreen(vm = vm, hasPermission = perm.allGranted, onRequestPermission = perm.request)
@@ -100,21 +124,32 @@ private fun BleTab() {
     }
     val perm = rememberPermissions(blePerms)
     val vm: BleScannerViewModel = viewModel(
-        factory = viewModelFactory {
-            initializer { BleScannerViewModel(BleScanner(context.applicationContext)) }
-        },
+        factory = viewModelFactory { initializer { BleScannerViewModel(BleScanner(context.applicationContext)) } },
     )
     val gattProbe = remember { GattProbe(context.applicationContext) }
     LaunchedEffect(perm.allGranted) { vm.setEnabled(perm.allGranted) }
-    BleScannerScreen(
-        vm = vm,
-        hasPermission = perm.allGranted,
-        onRequestPermission = perm.request,
-        gattProbe = gattProbe,
-    )
+    BleScannerScreen(vm = vm, hasPermission = perm.allGranted, onRequestPermission = perm.request, gattProbe = gattProbe)
 }
 
 @Composable
-private fun Placeholder(text: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(text) }
+private fun AudioTab() {
+    val perm = rememberPermissions(listOf(Manifest.permission.RECORD_AUDIO))
+    val vm: AudioSpectrogramViewModel = viewModel(
+        factory = viewModelFactory { initializer { AudioSpectrogramViewModel(MicAudioSource()) } },
+    )
+    LaunchedEffect(perm.allGranted) { vm.setEnabled(perm.allGranted) }
+    AudioSpectrogramScreen(vm = vm, hasPermission = perm.allGranted, onRequestPermission = perm.request)
+}
+
+@Composable
+private fun Placeholder(title: String, body: String) {
+    Column(
+        Modifier.fillMaxSize().padding(28.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("> $title", color = MatrixGreen, style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(10.dp))
+        Text(body, color = MatrixTextDim, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+    }
 }

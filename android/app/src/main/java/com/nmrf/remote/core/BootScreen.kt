@@ -25,17 +25,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nmrf.remote.ui.theme.NeonGreen
+import com.nmrf.remote.ui.components.MatrixRain
+import com.nmrf.remote.ui.theme.MatrixGreen
+import com.nmrf.remote.ui.theme.MatrixText
+import com.nmrf.remote.ui.theme.MatrixTextDim
 import kotlinx.coroutines.delay
 
 @Composable
 fun BootScreen(onDone: () -> Unit) {
     val appear = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
-        appear.animateTo(1f, tween(600))
+        appear.animateTo(1f, tween(700))
         delay(1100)
         onDone()
     }
@@ -44,37 +46,38 @@ fun BootScreen(onDone: () -> Unit) {
         0f, 1f, infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Restart), label = "ping",
     )
     val pulse by t.animateFloat(
-        0.8f, 1.2f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "pulse",
+        0.85f, 1.2f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "pulse",
     )
 
     Box(Modifier.fillMaxSize().appBackground(), contentAlignment = Alignment.Center) {
+        MatrixRain(Modifier.fillMaxSize().graphicsLayer { alpha = 0.5f })
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Canvas(
-                Modifier.size(170.dp).graphicsLayer {
+                Modifier.size(150.dp).graphicsLayer {
                     alpha = appear.value
-                    val s = 0.8f + 0.2f * appear.value
-                    scaleX = s
-                    scaleY = s
+                    val s = 0.75f + 0.25f * appear.value
+                    scaleX = s; scaleY = s
                 },
             ) {
                 val c = Offset(size.width / 2f, size.height / 2f)
                 val maxR = size.minDimension / 2f
-                drawCircle(NeonGreen.copy(alpha = (1f - ping) * 0.45f), maxR * (0.3f + 0.7f * ping), c, style = Stroke(width = 3f))
-                drawCircle(NeonGreen.copy(alpha = 0.4f), maxR * 0.62f, c, style = Stroke(width = 3f))
-                drawCircle(NeonGreen.copy(alpha = 0.75f), maxR * 0.38f, c, style = Stroke(width = 3.5f))
-                drawCircle(NeonGreen, maxR * 0.12f * pulse, c)
+                drawCircle(MatrixGreen.copy(alpha = (1f - ping) * 0.5f), maxR * (0.3f + 0.7f * ping), c, style = Stroke(3f))
+                drawCircle(MatrixGreen.copy(alpha = 0.4f), maxR * 0.62f, c, style = Stroke(3f))
+                drawCircle(MatrixGreen.copy(alpha = 0.8f), maxR * 0.38f, c, style = Stroke(3.5f))
+                drawCircle(MatrixGreen, maxR * 0.12f * pulse, c)
             }
             Spacer(Modifier.height(22.dp))
             Text(
-                "NMRF REMOTE",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 6.sp),
+                "N M R F   R E M O T E",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MatrixText,
                 modifier = Modifier.graphicsLayer { alpha = appear.value },
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 "RF · WLAN · BLE — LAB",
                 style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 3.sp),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                color = MatrixTextDim,
                 modifier = Modifier.graphicsLayer { alpha = appear.value },
             )
         }
