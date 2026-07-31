@@ -9,17 +9,21 @@ Erstes Modul: **WLAN-Analyzer** (läuft ohne HAT/Firmware).
 
 ## Öffnen & Bauen
 
-1. **Android Studio** → *Open* → Ordner `android/` wählen.
-2. Gradle-Sync abwarten (lädt AGP 8.7 / Kotlin 2.0.21 / Compose BOM). Android Studio erzeugt
-   dabei den Gradle-Wrapper (`gradlew`/`gradle-wrapper.jar`) automatisch — die Jar liegt
-   absichtlich **nicht** im Repo.
-3. Gerät per USB (USB-Debugging an) → **Run 'app'**.
+Der Gradle-Wrapper ist enthalten; Build + Unit-Tests sind verifiziert
+(Gradle 8.9, AGP 8.7.0, Kotlin 2.0.21, Compose BOM 2024.09.03).
 
-CLI-Alternative (nachdem der Wrapper existiert):
+**Wichtig:** CLI-Builds mit **JDK 21** (JBR) — Java 25 ist für Gradle 8.9 zu neu.
+
+1. **Android Studio** → *Open* → Ordner `android/` wählen, Gradle-Sync abwarten
+   (Studio installiert das `android-34`-Platform bei Bedarf automatisch).
+2. Gerät per USB (USB-Debugging an) → **Run 'app'**.
+
+CLI:
 ```
 cd android
+export JAVA_HOME="$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Home"
 ./gradlew :app:testDebugUnitTest   # Unit-Tests (RadioMath + ViewModel)
-./gradlew :app:assembleDebug       # APK bauen
+./gradlew :app:assembleDebug       # Debug-APK -> app/build/outputs/apk/debug/
 ```
 
 ## Berechtigungen
