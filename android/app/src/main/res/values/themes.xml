@@ -1,0 +1,4 @@
+<resources>
+    <!-- ponytail: Framework-Theme, spart die material-components-XML-Lib; Compose zeichnet Material3 selbst -->
+    <style name="Theme.NMRFRemote" parent="android:Theme.Material.NoActionBar" />
+</resources>
