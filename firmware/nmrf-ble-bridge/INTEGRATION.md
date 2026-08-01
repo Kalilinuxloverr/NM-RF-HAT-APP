@@ -90,3 +90,14 @@ Bruce 1.16 hat ein fertiges, aber geparktes `src/modules/NRF24/nrf_spectrum.cpp.
    In der App zeichnet der SPEKTRUM-Tab daraus einen Live-Wasserfall.
 
 Verifiziert: kompiliert sauber für env CYD-2432S028 (Bruce 1.16, NimBLE 2.5).
+
+## v2c — CYD-Screen-Mirror (Draw-Command-Streaming an die App)
+Bruce hat einen `tft_logger`, der jeden Zeichenbefehl als kompaktes Binärpaket serialisiert
+(Header 0xAA, Längenbyte, Funktionscode, BE-uint16-Args, RGB565). Unsere Bridge routet
+`serialDevice` schon auf NUS-TX. Wire-up in `ble_remote.cpp` (bereits enthalten):
+- RxCb-Sonderbefehle: `mirror on` -> `tft.startAsyncSerial();`  ·  `mirror off` -> `tft.stopAsyncSerial();`
+- `SrvCb::onDisconnect` ruft `tft.stopAsyncSerial();`
+Die App (MIRROR-Tab) sendet `mirror on` beim Öffnen und demuxt den gemischten Stream
+(0xAA = Binär-Draw-Op, sonst Text/Echo/SPEC; ASCII enthält nie 0xAA), spielt die Ops per
+`TftReplay` auf ein Bitmap = Live-CYD-Screen. `tft` ist über `globals.h` verfügbar.
+Verifiziert: kompiliert für env CYD-2432S028.

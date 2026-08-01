@@ -79,6 +79,8 @@ class RxCb : public NimBLECharacteristicCallbacks {
                 setBrightness(bruceConfig.bright, false);
                 continue;
             }
+            if (low == "mirror on") { tft.startAsyncSerial(); continue; }
+            if (low == "mirror off") { tft.stopAsyncSerial(); continue; }
             parseSerialCommand(line, false);  // in Bruces cmdQueue, nicht blockierend
         }
     }
@@ -93,6 +95,7 @@ class SrvCb : public NimBLEServerCallbacks {
     void onDisconnect(NimBLEServer *s, NimBLEConnInfo &i, int reason) override {
         BLEConnected = false;
         serialDevice = savedSerial ? savedSerial : &USBserial;  // USB zurück
+        tft.stopAsyncSerial();
         rxbuf = "";
         NimBLEDevice::startAdvertising();
     }
