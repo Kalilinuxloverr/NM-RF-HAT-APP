@@ -75,3 +75,18 @@ BIN=~/.platformio/packages/toolchain-xtensa-esp-elf/bin
 # .patched-Flag bleibt -> patch.py überspringt und zerstört die Lib nicht mehr
 ```
 Verifiziert geflasht: ESP32-D0WD-V3, 4 MB, `pio run -e CYD-2432S028 -t upload`.
+
+## v2b — nRF24-Spektrum (Wasserfall) aktivieren + an die App streamen
+Bruce 1.16 hat ein fertiges, aber geparktes `src/modules/NRF24/nrf_spectrum.cpp.bak`
+(farbiger Wasserfall + Balken + Peak-Hold + 4 Modi, 126 Kanäle). Aktivieren + Stream:
+1. `nrf_spectrum.cpp.bak` -> `nrf_spectrum.cpp` (überschreibt die alte 80-Kanal-Version;
+   `scanChannels(bool)` bleibt erhalten, keine externen Referenzen brechen).
+2. In `nrf_spectrum.cpp` nach den Includes ergänzen:
+   `#include "modules/ble/ble_remote.h"` und `#define NRF_SPECTRUM_CHANNELS 126`.
+3. Direkt nach `digitalWrite(bruceConfigPins.NRF24_bus.io0, HIGH);` (Ende des Sweep-Loops):
+   `bleRemoteStreamSpectrum(channel, NRF_SPECTRUM_CHANNELS);`
+4. `bleRemoteStreamSpectrum(const uint8_t*, int)` ist in `ble_remote.{h,cpp}` enthalten:
+   sendet `SPEC:v0,..,vN` (Werte 0..100) per NUS-Notify, wenn ein App-Client verbunden ist.
+   In der App zeichnet der SPEKTRUM-Tab daraus einen Live-Wasserfall.
+
+Verifiziert: kompiliert sauber für env CYD-2432S028 (Bruce 1.16, NimBLE 2.5).

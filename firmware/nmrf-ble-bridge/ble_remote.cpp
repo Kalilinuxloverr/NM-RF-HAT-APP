@@ -137,3 +137,15 @@ void bleRemoteStop() {
 }
 
 bool bleRemoteActive() { return started; }
+
+// v2b: nRF24-Spektrum als "SPEC:v0,..,vN"-Zeile an die App streamen (Kanalwerte 0..100).
+void bleRemoteStreamSpectrum(const uint8_t *ch, int n) {
+    if (!started || !BLEConnected || txChar == nullptr) return;
+    String s = "SPEC:";
+    for (int i = 0; i < n; i++) {
+        if (i) s += ',';
+        s += (int)ch[i];
+    }
+    s += '\n';
+    nusSend((const uint8_t *)s.c_str(), s.length());
+}
