@@ -1,5 +1,7 @@
 package com.nmrf.remote.core
 
+import android.Manifest
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,51 +27,57 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nmrf.remote.tools.BeaconScreen
+import com.nmrf.remote.tools.ExportScreen
+import com.nmrf.remote.tools.GattConsoleScreen
+import com.nmrf.remote.tools.OuiDbScreen
+import com.nmrf.remote.tools.WifiDetectorScreen
 import com.nmrf.remote.ui.components.HeaderChip
 import com.nmrf.remote.ui.components.ScreenHeader
-import com.nmrf.remote.ui.theme.MatrixGreen
 import com.nmrf.remote.ui.theme.MatrixGreenDark
 import com.nmrf.remote.ui.theme.MatrixPanel
 import com.nmrf.remote.ui.theme.MatrixText
-import com.nmrf.remote.ui.theme.MatrixTextDim
 
-private data class Tool(val label: String, val glyph: String, val desc: String)
+private data class Tool(val id: String, val label: String, val glyph: String)
 
 private val TOOLS = listOf(
-    Tool("BLE-Beacon", "📡", "iBeacon/Eddystone/Manufacturer dekodieren"),
-    Tool("WLAN-Detektor", "🛡", "Kanal-Last + Deauth/Beacon-Anomalien (passiv)"),
-    Tool("Scans/Export", "💾", "WLAN/BLE/Spektren sichern (CSV/JSON)"),
-    Tool("OUI/Company-DB", "🔎", "Hersteller offline nachschlagen"),
-    Tool("GATT-Konsole", "🧬", "Characteristics lesen/schreiben/notify"),
+    Tool("beacon", "BLE-Beacon", "📡"),
+    Tool("wifi", "WLAN-Detektor", "🛡"),
+    Tool("gatt", "GATT-Konsole", "🧬"),
+    Tool("oui", "OUI/Company", "🔎"),
+    Tool("export", "Scans/Export", "💾"),
 )
+
+private fun blePerms() = if (Build.VERSION.SDK_INT >= 31)
+    listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+else listOf(Manifest.permission.ACCESS_FINE_LOCATION)
 
 @Composable
 fun ToolsScreen(onBack: () -> Unit) {
-    var sel by remember { mutableStateOf<Tool?>(null) }
-    val s = sel
-    if (s != null) {
-        Column(Modifier.fillMaxSize()) {
-            ScreenHeader(s.label.uppercase(), s.desc, action = { HeaderChip("‹ TOOLS") { sel = null } })
-            Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(s.glyph, fontSize = 48.sp)
-                Text("kommt in Phase 3", color = MatrixGreen, style = MaterialTheme.typography.titleMedium)
-                Text(s.desc, color = MatrixTextDim, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        return
+    var sel by remember { mutableStateOf<String?>(null) }
+    val back = { sel = null }
+    when (sel) {
+        "oui" -> OuiDbScreen(back)
+        "export" -> ExportScreen(back)
+        "wifi" -> { val p = rememberPermissions(listOf(Manifest.permission.ACCESS_FINE_LOCATION)); WifiDetectorScreen(back, p.allGranted, p.request) }
+        "beacon" -> { val p = rememberPermissions(remember { blePerms() }); BeaconScreen(back, p.allGranted, p.request) }
+        "gatt" -> { val p = rememberPermissions(remember { blePerms() }); GattConsoleScreen(back, p.allGranted, p.request) }
+        else -> ToolGrid(onBack) { sel = it }
     }
+}
+
+@Composable
+private fun ToolGrid(onBack: () -> Unit, onOpen: (String) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("TOOLS", "Standalone — ohne HAT", action = { HeaderChip("‹ HOME", onBack) })
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            columns = GridCells.Fixed(2), modifier = Modifier.fillMaxSize().padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(TOOLS) { t ->
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(MatrixPanel)
-                        .border(1.dp, MatrixGreenDark, RoundedCornerShape(10.dp)).clickable { sel = t }.padding(14.dp),
+                        .border(1.dp, MatrixGreenDark, RoundedCornerShape(10.dp)).clickable { onOpen(t.id) }.padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(t.glyph, fontSize = 34.sp)
