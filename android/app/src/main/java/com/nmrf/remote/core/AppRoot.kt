@@ -5,6 +5,14 @@ import android.os.Build
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -71,6 +79,7 @@ fun AppRoot() {
     Scaffold(
         modifier = Modifier.appBackground(),
         containerColor = Color.Transparent,
+        topBar = { AppTopBar() },
         bottomBar = {
             NavigationBar(containerColor = MatrixPanel, contentColor = MatrixGreen) {
                 tabs.forEachIndexed { i, t ->
@@ -145,4 +154,26 @@ private fun HatTab() {
         },
     )
     HatScreen(vm = vm, hasPermission = perm.allGranted, onRequestPermission = perm.request)
+}
+
+@Composable
+private fun AppTopBar() {
+    Column {
+        Row(
+            Modifier.fillMaxWidth().background(MatrixPanel)
+                .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("◉", color = MatrixGreen, fontSize = 16.sp)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "NMRF REMOTE",
+                color = MatrixGreen,
+                style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 3.sp),
+            )
+            Spacer(Modifier.weight(1f))
+            Text("LAB", color = MatrixTextDim, style = MaterialTheme.typography.labelMedium)
+        }
+        HorizontalDivider(color = MatrixGreenDark)
+    }
 }
