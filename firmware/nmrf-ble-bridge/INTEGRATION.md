@@ -57,3 +57,21 @@ Firmware führt sie über die vorhandene CLI aus.
   bei Connect umbiegen. Bis dahin: Befehle senden + Rückmeldung am HAT-Display.
 - **Sicherheit:** volle CLI (inkl. gpio/badusb) → nur Labor. Passkey-Bonding via die
   auskommentierten Zeilen in `bleRemoteStart()` aktivierbar.
+
+## Toolchain-Gotcha (pioarduino + esp32-classic) — WICHTIG fürs Flashen
+Bruce weakt `ieee80211_raw_frame_sanity_check` in `libnet80211.a` (für WLAN-Deauth) via
+`patch.py`. Dessen objcopy-Aufruf nutzt aber den ALTEN Toolchain-Namen
+(`xtensa-esp32-elf-objcopy` / `-p toolchain-xtensa-esp32`) — aktuell heißt sie
+`xtensa-esp-elf-objcopy` (`toolchain-xtensa-esp-elf`). Das Weakening schlägt still fehl,
+`libnet80211.a` verschwindet, das `.patched`-Flag wird trotzdem gesetzt → Link-Fehler
+`cannot find -lnet80211` bzw. `multiple definition of ieee80211_raw_frame_sanity_check`.
+
+Fix (einmalig, nach dem ersten Fehlversuch, dann neu bauen):
+```
+L=~/.platformio/packages/framework-arduinoespressif32-libs/esp32/lib
+BIN=~/.platformio/packages/toolchain-xtensa-esp-elf/bin
+[ -f "$L/libnet80211.a" ] || cp "$L/libnet80211.a.old" "$L/libnet80211.a"
+"$BIN/xtensa-esp-elf-objcopy" --weaken-symbol=ieee80211_raw_frame_sanity_check "$L/libnet80211.a"
+# .patched-Flag bleibt -> patch.py überspringt und zerstört die Lib nicht mehr
+```
+Verifiziert geflasht: ESP32-D0WD-V3, 4 MB, `pio run -e CYD-2432S028 -t upload`.
