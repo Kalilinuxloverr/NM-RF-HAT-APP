@@ -3,10 +3,7 @@ package com.nmrf.remote.core
 import android.Manifest
 import android.os.Build
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -22,11 +19,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,6 +34,9 @@ import com.nmrf.remote.ble.BleScanner
 import com.nmrf.remote.ble.BleScannerScreen
 import com.nmrf.remote.ble.BleScannerViewModel
 import com.nmrf.remote.ble.GattProbe
+import com.nmrf.remote.hat.BleBruceLink
+import com.nmrf.remote.hat.HatScreen
+import com.nmrf.remote.hat.HatViewModel
 import com.nmrf.remote.ui.theme.MatrixGreen
 import com.nmrf.remote.ui.theme.MatrixGreenDark
 import com.nmrf.remote.ui.theme.MatrixPanel
@@ -50,6 +48,13 @@ import com.nmrf.remote.wifi.WifiScanner
 private enum class Tab(val label: String, val glyph: String) {
     WIFI("WLAN", "📶"), BLE("BLE", "🔵"), AUDIO("AUDIO", "🎚"), HAT("HAT", "🛰")
 }
+
+private fun blePermsFor(): List<String> =
+    if (Build.VERSION.SDK_INT >= 31) {
+        listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+    } else {
+        listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
 
 @Composable
 fun AppRoot() {
@@ -91,11 +96,7 @@ fun AppRoot() {
                 Tab.WIFI -> WifiTab()
                 Tab.BLE -> BleTab()
                 Tab.AUDIO -> AudioTab()
-                Tab.HAT -> Placeholder(
-                    "HAT-STEUERUNG",
-                    "Modul 4/5: BLE-Bridge zum NM-RF-HAT + Attacken (SubGHz/IR/NFC/Deauth). " +
-                        "Braucht den ESP32-Flash der Firmware — kommt als Nächstes.",
-                )
+                Tab.HAT -> HatTab()
             }
         }
     }
@@ -115,14 +116,7 @@ private fun WifiTab() {
 @Composable
 private fun BleTab() {
     val context = LocalContext.current
-    val blePerms = remember {
-        if (Build.VERSION.SDK_INT >= 31) {
-            listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
-        } else {
-            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-    }
-    val perm = rememberPermissions(blePerms)
+    val perm = rememberPermissions(remember { blePermsFor() })
     val vm: BleScannerViewModel = viewModel(
         factory = viewModelFactory { initializer { BleScannerViewModel(BleScanner(context.applicationContext)) } },
     )
@@ -142,14 +136,13 @@ private fun AudioTab() {
 }
 
 @Composable
-private fun Placeholder(title: String, body: String) {
-    Column(
-        Modifier.fillMaxSize().padding(28.dp),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text("> $title", color = MatrixGreen, style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(10.dp))
-        Text(body, color = MatrixTextDim, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-    }
+private fun HatTab() {
+    val context = LocalContext.current
+    val perm = rememberPermissions(remember { blePermsFor() })
+    val vm: HatViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer { HatViewModel(BleBruceLink(context.applicationContext), BleScanner(context.applicationContext)) }
+        },
+    )
+    HatScreen(vm = vm, hasPermission = perm.allGranted, onRequestPermission = perm.request)
 }
