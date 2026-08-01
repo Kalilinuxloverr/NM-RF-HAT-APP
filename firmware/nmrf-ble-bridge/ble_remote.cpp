@@ -11,6 +11,10 @@
 #include "core/display.h"     // turnOffDisplay()
 #include "core/utils.h"        // touchHeatMap
 #include "modules/NRF24/nrf_jammer.h"  // nrfSetJamPA
+#include "core/wifi/webInterface.h"   // server/configureWebServer/stopWebUi
+#include "core/wifi/wifi_common.h"    // wifiConnectMenu(WIFI_AP)/wifiDisconnect
+#include <WiFi.h>
+#include <new>
 #include "ble_remote.h"
 #include <cstring>
 
@@ -95,6 +99,19 @@ class RxCb : public NimBLECharacteristicCallbacks {
                 continue;
             }
             if (low.startsWith("jampa ")) { nrfSetJamPA((int)line.substring(6).toInt()); continue; }
+            if (low == "webon") {
+                bruceConfig.setWifiApCreds("NMRF-HAT", "nmrflab1");
+                if (!WiFi.isConnected()) wifiConnectMenu(WIFI_AP);
+                if (!server) {
+                    server = (AsyncWebServer *)malloc(sizeof(AsyncWebServer));
+                    new (server) AsyncWebServer(80);
+                    configureWebServer();
+                }
+                tft.setLogging(true);
+                nusSendStr("web on: AP NMRF-HAT @ 172.0.0.1\r\n");
+                continue;
+            }
+            if (low == "weboff") { if (server) stopWebUi(); wifiDisconnect(); nusSendStr("web off\r\n"); continue; }
             parseSerialCommand(line, false);  // in Bruces cmdQueue, nicht blockierend
         }
     }

@@ -117,7 +117,6 @@ private fun HatCandidate(d: BleDevice, onClick: () -> Unit) {
 private fun ConnectedView(vm: HatViewModel) {
     var sub by rememberSaveable { mutableIntStateOf(0) }   // 0=MIRROR (Standard)
     var stealthOff by remember { mutableStateOf(false) }
-    LaunchedEffect(sub) { if (sub == 0) vm.send("mirror on") else vm.send("mirror off") }
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader(
@@ -151,7 +150,12 @@ private fun ConnectedView(vm: HatViewModel) {
 @Composable
 private fun MirrorArea(vm: HatViewModel) {
     val frame by vm.frame.collectAsState()
+    val wifiOn by vm.wifiActive.collectAsState()
+    androidx.compose.runtime.DisposableEffect(Unit) { vm.mirrorEnter(); onDispose { vm.mirrorLeave() } }
     Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            HeaderChip(if (wifiOn) "● WLAN-Mirror (flüssig)" else "WLAN-Mirror") { if (wifiOn) vm.stopWifiMirror() else vm.startWifiMirror() }
+        }
         Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
             Canvas(
                 Modifier.fillMaxSize().pointerInput(Unit) {

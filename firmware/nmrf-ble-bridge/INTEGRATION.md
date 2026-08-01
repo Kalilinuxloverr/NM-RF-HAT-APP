@@ -111,3 +111,13 @@ Verifiziert: kompiliert für env CYD-2432S028.
   Deklaration `void nrfSetJamPA(int level);` in `nrf_jammer.h`. Wirkt beim (Neu-)Start des Jammers.
 - App: MIRROR-Tab antippen -> `touch <x> <y>` (Bild-Koordinate auf 240x320 gemappt); HAT-BEFEHLE-Tab
   hat eine nRF24-Power-Karte (MIN/LOW/HIGH/MAX -> `jampa`).
+
+## v3 (Phase 2) — WLAN-Mirror übers CYD-eigene AP
+Bridge-Befehle in ble_remote.cpp: `webon` -> `setWifiApCreds("NMRF-HAT","nmrflab1")` +
+`wifiConnectMenu(WIFI_AP)` + `AsyncWebServer(80)`+`configureWebServer()` + `tft.setLogging(true)`
+(BLE bleibt aktiv — koexistiert, FORCE_RADIO_TEARDOWN=false). `weboff` -> `stopWebUi()` + `wifiDisconnect()`.
+Includes: core/wifi/webInterface.h, core/wifi/wifi_common.h, <WiFi.h>, <new>.
+App (WifiMirror): tritt dem AP bei (WifiNetworkSpecifier), `POST /login` (admin/bruce) -> BRUCESESSION-
+Cookie, pollt `GET http://172.0.0.1/getscreen` (dieselben 0xAA-Draw-Ops -> TftReplay). Steuerung bleibt
+über BLE (touch/nav/commands). Hinweis: WLAN+BLE ist RAM-eng auf non-PSRAM-CYD; scheitert webon,
+fällt die App auf BLE-Mirror zurück.

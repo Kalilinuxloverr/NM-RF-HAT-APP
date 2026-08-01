@@ -17,6 +17,7 @@ class HatViewModel(
     private val link: BruceLink,
     private val scanner: BleSource,
     private val prefs: AppPrefs,
+    private val wifi: WifiMirror,
 ) : ViewModel() {
     val state: StateFlow<LinkState> = link.state
 
@@ -29,11 +30,14 @@ class HatViewModel(
     val spectrum: StateFlow<List<FloatArray>> = _spectrum.asStateFlow()
     private val specCols = ArrayDeque<FloatArray>()
 
-    // CYD-Screen-Mirror
     private val replay = TftReplay()
     private val _frame = MutableStateFlow(0)
     val frame: StateFlow<Int> = _frame.asStateFlow()
     fun screenBitmap(): Bitmap? = replay.bmp
+
+    private val _wifiActive = MutableStateFlow(false)
+    val wifiActive: StateFlow<Boolean> = _wifiActive.asStateFlow()
+    private var wifiJob: Job? = null
 
     private var scanJob: Job? = null
     private var reconnectJob: Job? = null
@@ -49,18 +53,44 @@ class HatViewModel(
         }
     }
 
+    // --- Mirror (BLE-Standard) / WLAN-Umschaltung ---
+    fun mirrorEnter() { if (!_wifiActive.value) link.send("mirror on") }
+    fun mirrorLeave() { link.send("mirror off"); if (_wifiActive.value) stopWifiMirror() }
+
+    fun startWifiMirror() {
+        if (_wifiActive.value) return
+        link.send("mirror off")
+        link.send("webon")
+        append("· WLAN: dem AP 'NMRF-HAT' beitreten…")
+        wifiJob = viewModelScope.launch {
+            delay(600)
+            if (wifi.start()) {
+                _wifiActive.value = true
+                append("· WLAN-Mirror aktiv (172.0.0.1)")
+                wifi.packets().collect { replay.apply(it); _frame.value = _frame.value + 1 }
+            } else {
+                append("· WLAN fehlgeschlagen — bleibe bei BLE")
+                link.send("weboff"); link.send("mirror on")
+            }
+        }
+    }
+
+    fun stopWifiMirror() {
+        wifiJob?.cancel(); wifiJob = null
+        wifi.stop()
+        _wifiActive.value = false
+        link.send("weboff")
+    }
+
     private fun onLine(l: String) {
         if (l.startsWith("SPEC:")) {
             val vals = l.removePrefix("SPEC:").split(",").mapNotNull { it.trim().toFloatOrNull() }
             if (vals.isNotEmpty()) {
                 val col = FloatArray(vals.size) { (vals[it] / 100f).coerceIn(0f, 1f) }
-                specCols.addLast(col)
-                while (specCols.size > 120) specCols.removeFirst()
+                specCols.addLast(col); while (specCols.size > 120) specCols.removeFirst()
                 _spectrum.value = specCols.toList()
             }
-        } else {
-            append(l)
-        }
+        } else append(l)
     }
 
     private fun onState(st: LinkState) {
@@ -68,7 +98,7 @@ class HatViewModel(
             LinkState.CONNECTED -> { userDisconnected = false; cancelReconnect(); stopScan() }
             LinkState.CONNECTING -> stopScan()
             LinkState.DISCONNECTED ->
-                if (!userDisconnected && !prefs.lastHat.isNullOrBlank()) scheduleReconnect() else startScan()
+                if (!userDisconnected && prefs.autoReconnect && !prefs.lastHat.isNullOrBlank()) scheduleReconnect() else startScan()
         }
     }
 
@@ -97,15 +127,14 @@ class HatViewModel(
 
     fun connect(address: String) {
         userDisconnected = false; prefs.lastHat = address
-        cancelReconnect(); stopScan()
-        append("· verbinde $address …")
+        cancelReconnect(); stopScan(); append("· verbinde $address …")
         link.connect(address, autoConnect = false)
     }
 
-    fun disconnect() { userDisconnected = true; cancelReconnect(); link.disconnect() }
+    fun disconnect() { userDisconnected = true; cancelReconnect(); if (_wifiActive.value) stopWifiMirror(); link.disconnect() }
     fun send(cmd: String) { if (cmd.isNotBlank()) { append("> $cmd"); link.send(cmd) } }
 
     private fun append(s: String) { _scrollback.value = (_scrollback.value + s).takeLast(500) }
 
-    override fun onCleared() { link.disconnect() }
+    override fun onCleared() { if (_wifiActive.value) stopWifiMirror(); link.disconnect() }
 }

@@ -27,6 +27,7 @@ import com.nmrf.remote.ble.GattProbe
 import com.nmrf.remote.hat.BleBruceLink
 import com.nmrf.remote.hat.HatScreen
 import com.nmrf.remote.hat.HatViewModel
+import com.nmrf.remote.hat.WifiMirror
 import com.nmrf.remote.wifi.WifiAnalyzerScreen
 import com.nmrf.remote.wifi.WifiAnalyzerViewModel
 import com.nmrf.remote.wifi.WifiScanner
@@ -105,7 +106,7 @@ private fun HatTab() {
     val perm = rememberPermissions(remember { blePermsFor() })
     val vm: HatViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { HatViewModel(BleBruceLink(context.applicationContext), BleScanner(context.applicationContext), AppPrefs(context.applicationContext)) }
+            initializer { HatViewModel(BleBruceLink(context.applicationContext), BleScanner(context.applicationContext), AppPrefs(context.applicationContext), WifiMirror(context.applicationContext)) }
         },
     )
     HatScreen(vm = vm, hasPermission = perm.allGranted, onRequestPermission = perm.request)
