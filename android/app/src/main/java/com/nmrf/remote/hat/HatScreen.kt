@@ -52,6 +52,7 @@ import com.nmrf.remote.ui.components.HeaderChip
 import com.nmrf.remote.ui.components.MatrixCard
 import com.nmrf.remote.ui.components.ScreenHeader
 import com.nmrf.remote.ui.components.SectionLabel
+import com.nmrf.remote.ui.components.VerticalWaterfall
 import com.nmrf.remote.ui.components.heat
 import com.nmrf.remote.ui.theme.MatrixGreen
 import com.nmrf.remote.ui.theme.MatrixGreenDark
@@ -246,7 +247,7 @@ private fun SpectrumView(vm: HatViewModel) {
                 "nRF24 · 2.4 GHz · ${cols.lastOrNull()?.size ?: 0} Kanäle · unten = CH0",
                 color = MatrixGreen, style = MaterialTheme.typography.labelMedium,
             )
-            Spectrogram2D(cols, Modifier.fillMaxWidth().weight(1f).padding(vertical = 6.dp))
+            VerticalWaterfall(cols, Modifier.fillMaxWidth().weight(1f).padding(vertical = 6.dp))
             cols.lastOrNull()?.let { SpectrumBars(it, Modifier.fillMaxWidth().height(70.dp)) }
         }
     }

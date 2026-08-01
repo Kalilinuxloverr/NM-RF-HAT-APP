@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.nmrf.remote.ui.components.HeaderChip
 import com.nmrf.remote.ui.components.ScreenHeader
 import com.nmrf.remote.ui.components.heat
+import com.nmrf.remote.ui.components.VerticalWaterfall
 import com.nmrf.remote.wifi.PermissionInfo
 
 private const val AUDIO_HELP =
@@ -44,7 +45,7 @@ fun AudioSpectrogramScreen(
             help = AUDIO_HELP,
             action = { HeaderChip(if (state.running) "STOP" else "START") { vm.setEnabled(!state.running) } },
         )
-        Spectrogram(
+        VerticalWaterfall(
             state.spectrogram,
             Modifier.fillMaxWidth().weight(1f).padding(horizontal = 8.dp, vertical = 6.dp),
         )

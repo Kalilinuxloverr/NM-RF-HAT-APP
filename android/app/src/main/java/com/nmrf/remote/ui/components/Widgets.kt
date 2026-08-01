@@ -167,3 +167,20 @@ fun heat(v: Float): Color {
     val base = lerp(Color(0xFF001505), MatrixGreen, (c * 1.35f).coerceIn(0f, 1f))
     return lerp(base, Color.White, ((c - 0.75f) / 0.25f).coerceIn(0f, 1f))
 }
+
+/** Vertikaler Wasserfall: jede Zeile = ein Spektrum (X=Bin), neueste oben, fließt nach unten. */
+@Composable
+fun VerticalWaterfall(frames: List<FloatArray>, modifier: Modifier) {
+    Canvas(modifier) {
+        if (frames.isEmpty()) return@Canvas
+        val rowH = size.height / frames.size
+        frames.forEachIndexed { i, row ->
+            if (row.isEmpty()) return@forEachIndexed
+            val y = size.height - (i + 1) * rowH   // ältestes unten, neuestes oben
+            val cellW = size.width / row.size
+            row.forEachIndexed { b, v ->
+                drawRect(heat(v), topLeft = Offset(b * cellW, y), size = Size(cellW + 1f, rowH + 1f))
+            }
+        }
+    }
+}
