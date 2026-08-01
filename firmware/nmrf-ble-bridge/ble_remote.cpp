@@ -44,7 +44,7 @@ class SrvCb : public NimBLEServerCallbacks {
 void bleRemoteStart() {
     if (started) return;
     // Coexist: hält ein Bruce-BLE-Angriff/-Scan den Stack, nicht kollidieren.
-    if (NimBLEDevice::getInitialized()) return;
+    if (NimBLEDevice::isInitialized()) return;
 
     NimBLEDevice::init("NMRF-HAT");
 
