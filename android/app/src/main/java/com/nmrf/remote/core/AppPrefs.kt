@@ -2,20 +2,22 @@ package com.nmrf.remote.core
 
 import android.content.Context
 
-/** Persistenter Kleinkram (Disclaimer, zuletzt verbundener HAT). SharedPreferences. */
 class AppPrefs(context: Context) {
     private val sp = context.applicationContext.getSharedPreferences("nmrf", Context.MODE_PRIVATE)
 
     var disclaimerAccepted: Boolean
-        get() = sp.getBoolean(KEY_DISCLAIMER, false)
-        set(v) { sp.edit().putBoolean(KEY_DISCLAIMER, v).apply() }
+        get() = sp.getBoolean("disclaimer_ok", false)
+        set(v) { sp.edit().putBoolean("disclaimer_ok", v).apply() }
 
     var lastHat: String?
-        get() = sp.getString(KEY_LAST_HAT, null)
-        set(v) { sp.edit().putString(KEY_LAST_HAT, v).apply() }
+        get() = sp.getString("last_hat", null)
+        set(v) { sp.edit().putString("last_hat", v).apply() }
 
-    private companion object {
-        const val KEY_DISCLAIMER = "disclaimer_ok"
-        const val KEY_LAST_HAT = "last_hat"
-    }
+    var transport: String   // "auto" | "wifi" | "ble"
+        get() = sp.getString("transport", "auto") ?: "auto"
+        set(v) { sp.edit().putString("transport", v).apply() }
+
+    var autoReconnect: Boolean
+        get() = sp.getBoolean("auto_reconnect", true)
+        set(v) { sp.edit().putBoolean("auto_reconnect", v).apply() }
 }

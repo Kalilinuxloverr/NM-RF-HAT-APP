@@ -2,36 +2,18 @@ package com.nmrf.remote.core
 
 import android.Manifest
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.ui.Alignment
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -45,17 +27,11 @@ import com.nmrf.remote.ble.GattProbe
 import com.nmrf.remote.hat.BleBruceLink
 import com.nmrf.remote.hat.HatScreen
 import com.nmrf.remote.hat.HatViewModel
-import com.nmrf.remote.ui.theme.MatrixGreen
-import com.nmrf.remote.ui.theme.MatrixGreenDark
-import com.nmrf.remote.ui.theme.MatrixPanel
-import com.nmrf.remote.ui.theme.MatrixTextDim
 import com.nmrf.remote.wifi.WifiAnalyzerScreen
 import com.nmrf.remote.wifi.WifiAnalyzerViewModel
 import com.nmrf.remote.wifi.WifiScanner
 
-private enum class Tab(val label: String, val glyph: String) {
-    WIFI("WLAN", "📶"), BLE("BLE", "🔵"), AUDIO("AUDIO", "🎚"), HAT("HAT", "🛰")
-}
+enum class Screen { HOME, WIFI, BLE, AUDIO, HAT, TOOLS, SETTINGS }
 
 private fun blePermsFor(): List<String> =
     if (Build.VERSION.SDK_INT >= 31) {
@@ -74,39 +50,18 @@ fun AppRoot() {
         return
     }
 
-    var tabIndex by rememberSaveable { mutableIntStateOf(0) }
-    val tabs = Tab.entries
-    Scaffold(
-        modifier = Modifier.appBackground(),
-        containerColor = Color.Transparent,
-        topBar = { AppTopBar() },
-        bottomBar = {
-            NavigationBar(containerColor = MatrixPanel, contentColor = MatrixGreen) {
-                tabs.forEachIndexed { i, t ->
-                    NavigationBarItem(
-                        selected = tabIndex == i,
-                        onClick = { tabIndex = i },
-                        icon = { Text(t.glyph, fontSize = 18.sp) },
-                        label = { Text(t.label, style = MaterialTheme.typography.labelMedium) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MatrixGreen,
-                            selectedTextColor = MatrixGreen,
-                            unselectedIconColor = MatrixTextDim,
-                            unselectedTextColor = MatrixTextDim,
-                            indicatorColor = MatrixGreenDark,
-                        ),
-                    )
-                }
-            }
-        },
-    ) { pad ->
-        Box(Modifier.fillMaxSize().padding(pad)) {
-            when (tabs[tabIndex]) {
-                Tab.WIFI -> WifiTab()
-                Tab.BLE -> BleTab()
-                Tab.AUDIO -> AudioTab()
-                Tab.HAT -> HatTab()
-            }
+    var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
+    if (screen != Screen.HOME) BackHandler { screen = Screen.HOME }
+
+    Box(Modifier.fillMaxSize().appBackground()) {
+        when (screen) {
+            Screen.HOME -> LauncherScreen(onOpen = { screen = it })
+            Screen.WIFI -> WifiTab()
+            Screen.BLE -> BleTab()
+            Screen.AUDIO -> AudioTab()
+            Screen.HAT -> HatTab()
+            Screen.TOOLS -> ToolsScreen(onBack = { screen = Screen.HOME })
+            Screen.SETTINGS -> SettingsScreen(onBack = { screen = Screen.HOME })
         }
     }
 }
@@ -154,26 +109,4 @@ private fun HatTab() {
         },
     )
     HatScreen(vm = vm, hasPermission = perm.allGranted, onRequestPermission = perm.request)
-}
-
-@Composable
-private fun AppTopBar() {
-    Column {
-        Row(
-            Modifier.fillMaxWidth().background(MatrixPanel)
-                .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("◉", color = MatrixGreen, fontSize = 16.sp)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "NMRF REMOTE",
-                color = MatrixGreen,
-                style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 3.sp),
-            )
-            Spacer(Modifier.weight(1f))
-            Text("LAB", color = MatrixTextDim, style = MaterialTheme.typography.labelMedium)
-        }
-        HorizontalDivider(color = MatrixGreenDark)
-    }
 }
