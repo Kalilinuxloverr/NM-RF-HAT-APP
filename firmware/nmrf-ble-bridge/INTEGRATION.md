@@ -1,49 +1,59 @@
-# Integration in den Bruce-1.16-Fork
+# Integration in den Bruce-1.16-Fork (rein additiv — keine Funktion geht verloren)
 
-Alles verifiziert gegen Tag `1.16` (github.com/pr3y/Bruce).
+Verifiziert gegen Tag `1.16` (github.com/pr3y/Bruce). Schnellstart: `./setup_fork.sh` klont
+Bruce 1.16 komplett und legt das Overlay ein. Danach die 3 Patches unten anwenden (nur
+Hinzufügen, nichts löschen → voller Bruce-Funktionsumfang bleibt erhalten).
 
-## 1. Dateien einlegen
-`ble_remote.h` + `ble_remote.cpp` nach **`src/modules/ble/`** kopieren
-(neben `ble_common.cpp`). PlatformIO globbt `src/**`, kein Build-Skript nötig.
+## Dateien
+`ble_remote.h` + `ble_remote.cpp` → `src/modules/ble/` (PlatformIO globbt `src/**`).
 
-## 2. Aktivieren
-Minimal (Autostart beim Booten): in **`src/main.cpp`**, in `setup()` nach
-`startSerialCommandsHandlerTask(true);` (dort L449):
+## Patch 1 — Config-Toggle (persistent, `src/core/config.h` + `config.cpp`)
+Am einfachsten die bestehenden `wifiAtStartup`-Zeilen kopieren und in `bleRemote` umbenennen.
+
+`config.h` (bei den anderen int-Feldern + Settern):
+```cpp
+int  bleRemote = 0;                 // + neu
+void setBleRemote(int value);       // + neu
+```
+`config.cpp`:
+```cpp
+void BruceConfig::setBleRemote(int value) { bleRemote = value; saveFile(); }   // + neu
+// in toJson():   setting["bleRemote"] = bleRemote;                            // + neu (Stil der Nachbarzeilen übernehmen)
+// in fromFile():  if (!setting["bleRemote"].isNull()) bleRemote = setting["bleRemote"];  // + neu
+```
+
+## Patch 2 — Menüpunkt (`src/core/settings.cpp`)
+Im Settings-Menü einen Toggle ergänzen (Stil der bestehenden Optionen übernehmen):
 ```cpp
 #include "modules/ble/ble_remote.h"
-...
+// ... im options-Vector des Settings-Menüs:
+{ "BLE Remote", [=]() {
+      bruceConfig.setBleRemote(!bruceConfig.bleRemote);
+      if (bruceConfig.bleRemote) bleRemoteStart(); else bleRemoteStop();
+  } },
+```
+
+## Patch 3 — Autostart (`src/main.cpp`, in setup() nach L449)
+```cpp
+#include "modules/ble/ble_remote.h"
+// ... direkt nach: startSerialCommandsHandlerTask(true);
 if (bruceConfig.bleRemote) bleRemoteStart();
 ```
-Kein Loop-Hook nötig — RX ist event-getrieben (onWrite), Re-Advertising passiert in onDisconnect.
 
-## 3. Settings-Toggle „BLE Remote" (persistent)
-Bruce speichert Config als JSON `/bruce.conf` über `BruceConfig` (`src/core/config.{h,cpp}`).
-- `config.h`: Feld `int bleRemote = 0;` + `void setBleRemote(int value);` (Muster wie `wifiAtStartup`).
-- `config.cpp`: Feld in `toJson()` **und** `fromFile()` ergänzen; `setBleRemote()` setzt + `saveFile()`.
-- Menüpunkt in `src/core/settings.cpp`: Toggle, der bei An `bleRemoteStart()` / bei Aus `bleRemoteStop()` ruft.
-- (Optional CLI-Toggle in `src/core/serial_commands/settings_commands.cpp`.)
-
-## 4. Bauen & Flashen (PlatformIO)
-Env für ESP32-2432S028 „CYD":
-- `CYD-2432S028`  (Standard, ein Micro-USB, resistiver Touch XPT2046)
-- `CYD-2USB`      (Revision mit Micro-USB **und** USB-C)
+## Bauen & Flashen
 ```
-pio run -e CYD-2432S028 -t upload      # ggf. CYD-2USB
+pio run -e CYD-2432S028 -t upload      # ESP32-2432S028; dual-USB-Board: CYD-2USB
 ```
 
-## 5. Verbinden (App)
-Im BLE-Tab der App das Gerät **NMRF-HAT** (NUS-UUID `6E400001-…`) verbinden.
-App schreibt Befehle auf RX (`6E400002`); z.B. `info`, `ir`, `subghz`, `nav` … (Flipper-CLI-kompatibel).
+## Verbinden (App)
+BLE-/HAT-Tab → Gerät **NMRF-HAT** (NUS `6E400001-…`). App schreibt Befehle auf RX,
+Firmware führt sie über die vorhandene CLI aus.
 
-## 6. Wichtige Hinweise (aus dem Quellcheck)
-- **Ein NimBLE-Stack:** BLE-Angriffe (ble_spam/sniffer/BLE_Suite) init/deinit denselben Stack.
-  Läuft ein Angriff, kollidiert die Bridge → Toggle mit BLE-Angriffen **gegenseitig ausschließen**
-  (unser `getInitialized()`-Guard verhindert Kollision, aber der Angriff „gewinnt").
-- Bruce nutzt eine **eigene** Service-UUID (nicht NUS) → keine UUID-Kollision.
-- **Ausgabe über BLE (v2):** SerialDevice-Unterklasse → `txChar->notify()`, `serialDevice`
-  bei Connect umbiegen. Bis dahin ist v1 „blind steuern" (Befehle senden, Rückmeldung am HAT-Display).
-
-## 7. Sicherheit
-Kanal fährt die **volle CLI** (inkl. `gpio`, `badusb`) → nur abgeschottetes Labor.
-Für verschlüsseltes Pairing die Passkey-Zeilen in `bleRemoteStart()` aktivieren
-(dann muss die App bonden).
+## Hinweise (aus dem Quellcheck)
+- **Ein NimBLE-Stack:** Bruce-BLE-Angriffe init/deinit denselben Stack → Toggle mit
+  BLE-Angriffen gegenseitig ausschließen (der `getInitialized()`-Guard verhindert Kollision).
+- Bruce nutzt eine eigene Service-UUID (nicht NUS) → keine Kollision.
+- **v2 (Ausgabe-Echo HAT→App):** SerialDevice-Unterklasse → `txChar->notify()`, `serialDevice`
+  bei Connect umbiegen. Bis dahin: Befehle senden + Rückmeldung am HAT-Display.
+- **Sicherheit:** volle CLI (inkl. gpio/badusb) → nur Labor. Passkey-Bonding via die
+  auskommentierten Zeilen in `bleRemoteStart()` aktivierbar.
