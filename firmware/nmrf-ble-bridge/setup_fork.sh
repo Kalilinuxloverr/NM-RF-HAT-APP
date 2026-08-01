@@ -6,7 +6,7 @@ DEST="${1:-Bruce-NMRF}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 echo ">> Klone Bruce @1.16 nach $DEST"
-git clone --depth 1 --branch 1.16 https://github.com/pr3y/Bruce "$DEST"
+git clone --depth 1 https://github.com/pr3y/Bruce "$DEST"   # main = aktueller Beta/dev-Stand
 
 echo ">> Kopiere BLE-Remote-Overlay nach src/modules/ble/"
 mkdir -p "$DEST/src/modules/ble"
@@ -20,5 +20,5 @@ Overlay eingelegt. Jetzt die 3 ADDITIVEN Patches aus INTEGRATION.md anwenden:
   3) main.cpp              : Autostart nach startSerialCommandsHandlerTask(true)
 
 Dann bauen/flashen (ESP32-2432S028 "CYD"):
-  cd DEST && pio run -e CYD-2432S028 -t upload      # oder CYD-2USB
+  cd DEST && pio run -e CYD-2USB -t upload            # Board-Variante deiner Wahl (auch CYD-2432S028)
 NOTE

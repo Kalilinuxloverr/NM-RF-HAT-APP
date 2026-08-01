@@ -121,3 +121,10 @@ App (WifiMirror): tritt dem AP bei (WifiNetworkSpecifier), `POST /login` (admin/
 Cookie, pollt `GET http://172.0.0.1/getscreen` (dieselben 0xAA-Draw-Ops -> TftReplay). Steuerung bleibt
 über BLE (touch/nav/commands). Hinweis: WLAN+BLE ist RAM-eng auf non-PSRAM-CYD; scheitert webon,
 fällt die App auf BLE-Mirror zurück.
+
+## Basis-Update — Bruce main (dev/Beta), Board CYD-2USB
+Ab jetzt basiert der Fork auf **Bruce `main`** (dev/Beta, `BRUCE_VERSION="dev"`) statt Tag 1.16 —
+alle Integrationspunkte sind strukturgleich (main.cpp Serial-Task-Zeile, src/modules/ble/,
+nrf_spectrum.cpp(.bak), nrf_jammer.cpp PA-Zeilen, patch.py net80211, /getscreen, softAP), das
+Overlay + alle Patches greifen 1:1. Gebaut/verifiziert für **env `CYD-2USB`** → `Bruce-CYD-2USB.bin`
+(flash-fertig, offset 0x0). Board-Variante bei Bedarf auf `CYD-2432S028` umstellbar.
