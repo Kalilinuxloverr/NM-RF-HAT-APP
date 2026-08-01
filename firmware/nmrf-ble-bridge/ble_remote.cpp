@@ -1,12 +1,16 @@
 // NMRF-HAT BLE-Remote-Bridge — Fork-Overlay für Bruce Release 1.16.
-// Verifiziert gegen: src/core/serialcmds.h (parseSerialCommand), include/globals.h
-// (BLEConnected) und NimBLE-Arduino @2.5 (2-arg-Callbacks).
-//
-// Ablage: src/modules/ble/ble_remote.{h,cpp} (PlatformIO globbt src/** automatisch).
+// v2: + Ausgabe-Echo (CLI-Output -> NUS-TX) + Stealth (Display aus).
+// Verifiziert gegen: core/serialcmds.h (parseSerialCommand), include/globals.h
+// (serialDevice/USBserial/bruceConfig), include/SerialDevice.h, core/settings.h,
+// core/display.h und NimBLE-Arduino @2.5.
+// Ablage: src/modules/ble/ble_remote.{h,cpp}
 #include <NimBLEDevice.h>
-#include <globals.h>          // extern bool BLEConnected;
-#include "core/serialcmds.h"  // bool parseSerialCommand(const String&, bool waitForResponse);
+#include <globals.h>          // serialDevice, USBserial, bruceConfig, BLEConnected
+#include "core/serialcmds.h"  // bool parseSerialCommand(const String&, bool);
+#include "core/settings.h"    // setBrightness(uint8_t, bool)
+#include "core/display.h"     // turnOffDisplay()
 #include "ble_remote.h"
+#include <cstring>
 
 // Nordic UART Service
 #define NUS_SVC "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -16,6 +20,46 @@
 static NimBLECharacteristic *txChar = nullptr;
 static String rxbuf;
 static bool started = false;
+static SerialDevice *savedSerial = nullptr;
+
+// --- HAT -> App: CLI-Ausgabe als Notify (MTU-gestückelt) ---
+static void nusSend(const uint8_t *data, size_t len) {
+    if (!txChar || len == 0) return;
+    const size_t chunk = 180;  // sicher unter ausgehandelter MTU
+    size_t off = 0;
+    while (off < len) {
+        size_t n = (len - off < chunk) ? (len - off) : chunk;
+        txChar->setValue(data + off, n);
+        txChar->notify();
+        off += n;
+        delay(2);
+    }
+}
+static void nusSendStr(const char *s) { nusSend((const uint8_t *)s, strlen(s)); }
+
+// SerialDevice-Adapter: spiegelt CLI-Ausgabe in die App. Eingabe kommt über RX (RxCb),
+// daher read/available/readStringUntil leer.
+class NusSerialDevice : public SerialDevice {
+public:
+    size_t println(const String &s) override { nusSendStr(s.c_str()); nusSendStr("\r\n"); return s.length(); }
+    size_t print(const String &s) override { nusSendStr(s.c_str()); return s.length(); }
+    size_t println() override { nusSendStr("\r\n"); return 0; }
+    size_t println(size_t n) override { String s(n); nusSendStr(s.c_str()); nusSendStr("\r\n"); return s.length(); }
+    size_t println(uint32_t n) override { String s(n); nusSendStr(s.c_str()); nusSendStr("\r\n"); return s.length(); }
+    size_t println(int n, int format) override { String s(n, format); nusSendStr(s.c_str()); nusSendStr("\r\n"); return s.length(); }
+    size_t print(int n, int format) override { String s(n, format); nusSendStr(s.c_str()); return s.length(); }
+    void vprintf(const char *fmt, va_list args) override {
+        char b[256];
+        int m = vsnprintf(b, sizeof(b), fmt, args);
+        if (m > 0) nusSend((const uint8_t *)b, (size_t)(m < (int)sizeof(b) ? m : (int)sizeof(b) - 1));
+    }
+    int read() override { return -1; }
+    size_t write(uint8_t *str, size_t size) override { nusSend(str, size); return size; }
+    void flush() override {}
+    int available() override { return 0; }
+    String readStringUntil(char) override { return String(); }
+};
+static NusSerialDevice nusSerial;
 
 // --- App -> HAT: eingehende Zeilen in Bruces Command-Queue schieben ---
 class RxCb : public NimBLECharacteristicCallbacks {
@@ -26,32 +70,41 @@ class RxCb : public NimBLECharacteristicCallbacks {
             String line = rxbuf.substring(0, nl);
             rxbuf.remove(0, nl + 1);
             line.trim();
-            // waitForResponse=false: nur enqueuen, blockiert den NimBLE-Host-Task nicht.
-            if (line.length()) parseSerialCommand(line, false);
+            if (!line.length()) continue;
+            // Stealth-Sonderbefehle (nicht an die CLI weiterreichen)
+            String low = line;
+            low.toLowerCase();
+            if (low == "stealth" || low == "stealth on") { turnOffDisplay(); continue; }
+            if (low == "stealth off" || low == "light" || low == "wake") {
+                setBrightness(bruceConfig.bright, false);
+                continue;
+            }
+            parseSerialCommand(line, false);  // in Bruces cmdQueue, nicht blockierend
         }
     }
 };
 
 class SrvCb : public NimBLEServerCallbacks {
-    void onConnect(NimBLEServer *s, NimBLEConnInfo &i) override { BLEConnected = true; }
+    void onConnect(NimBLEServer *s, NimBLEConnInfo &i) override {
+        BLEConnected = true;
+        savedSerial = serialDevice;
+        serialDevice = &nusSerial;  // CLI-Ausgabe in die App spiegeln
+    }
     void onDisconnect(NimBLEServer *s, NimBLEConnInfo &i, int reason) override {
         BLEConnected = false;
+        serialDevice = savedSerial ? savedSerial : &USBserial;  // USB zurück
         rxbuf = "";
-        NimBLEDevice::startAdvertising();  // wieder auffindbar
+        NimBLEDevice::startAdvertising();
     }
 };
 
 void bleRemoteStart() {
     if (started) return;
-    // Coexist: hält ein Bruce-BLE-Angriff/-Scan den Stack, nicht kollidieren.
-    if (NimBLEDevice::isInitialized()) return;
+    if (NimBLEDevice::isInitialized()) return;  // koexistiert mit Bruce-BLE-Angriffen
 
     NimBLEDevice::init("NMRF-HAT");
-
-    // --- Passkey-Bonding (verschlüsselt) — Laborbetrieb: standardmäßig AUS, da die App
-    //     ohne Pairing verbindet. Zum Härten einkommentieren und die App aufs Bonding
-    //     erweitern; RX/TX dann auf *_ENC-Properties setzen. ---
-    // NimBLEDevice::setSecurityAuth(true, true, true);   // bonding, MITM, SC
+    // Passkey-Bonding optional (Laborbetrieb: aus, App verbindet ohne Bonding):
+    // NimBLEDevice::setSecurityAuth(true, true, true);
     // NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY);
     // NimBLEDevice::setSecurityPasskey(123456);
 
@@ -75,6 +128,7 @@ void bleRemoteStart() {
 
 void bleRemoteStop() {
     if (!started) return;
+    if (savedSerial) serialDevice = savedSerial;
     NimBLEDevice::stopAdvertising();
     NimBLEDevice::deinit(true);
     txChar = nullptr;
@@ -83,9 +137,3 @@ void bleRemoteStop() {
 }
 
 bool bleRemoteActive() { return started; }
-
-// Ausgabe HAT -> App (v2): CLI-Output über BLE spiegeln. Bruce schreibt Output an das
-// abstrakte `serialDevice` (include/SerialDevice.h). Dazu eine SerialDevice-Unterklasse
-// bauen, die in txChar->notify() schreibt, und bei Connect `serialDevice = &bleDev` setzen
-// (bei Disconnect zurück auf USB). Siehe INTEGRATION.md. (Ein paar Log-Zeilen in
-// serialcmds.cpp gehen fest an USB-Serial und werden nicht gespiegelt.)
