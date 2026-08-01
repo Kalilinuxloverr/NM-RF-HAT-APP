@@ -141,7 +141,7 @@ private fun HatTab() {
     val perm = rememberPermissions(remember { blePermsFor() })
     val vm: HatViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { HatViewModel(BleBruceLink(context.applicationContext), BleScanner(context.applicationContext)) }
+            initializer { HatViewModel(BleBruceLink(context.applicationContext), BleScanner(context.applicationContext), AppPrefs(context.applicationContext)) }
         },
     )
     HatScreen(vm = vm, hasPermission = perm.allGranted, onRequestPermission = perm.request)

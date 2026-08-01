@@ -40,11 +40,11 @@ class BleBruceLink(context: Context) : BruceLink {
     private var writing = false
 
     @SuppressLint("MissingPermission")
-    override fun connect(address: String) {
+    override fun connect(address: String, autoConnect: Boolean) {
         if (_state.value != LinkState.DISCONNECTED) return
         val device = runCatching { adapter.getRemoteDevice(address) }.getOrNull() ?: return
         _state.value = LinkState.CONNECTING
-        gatt = device.connectGatt(app, false, cb)
+        gatt = device.connectGatt(app, autoConnect, cb)
     }
 
     @SuppressLint("MissingPermission")

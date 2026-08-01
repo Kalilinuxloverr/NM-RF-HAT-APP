@@ -9,7 +9,7 @@ enum class LinkState { DISCONNECTED, CONNECTING, CONNECTED }
 interface BruceLink {
     val state: StateFlow<LinkState>
     val lines: Flow<String>
-    fun connect(address: String)
+    fun connect(address: String, autoConnect: Boolean = false)
     fun disconnect()
     fun send(command: String)
 }

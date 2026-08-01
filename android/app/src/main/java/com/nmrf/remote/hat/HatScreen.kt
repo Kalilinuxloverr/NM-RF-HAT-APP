@@ -119,7 +119,13 @@ private fun ConnectedView(vm: HatViewModel) {
     Column(Modifier.fillMaxSize()) {
         ScreenHeader(
             "HAT-STEUERUNG", "verbunden", help = HAT_HELP,
-            action = { HeaderChip("TRENNEN") { vm.disconnect() } },
+            action = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    HeaderChip("STEALTH") { vm.send("stealth") }
+                    Spacer(Modifier.width(8.dp))
+                    HeaderChip("TRENNEN") { vm.disconnect() }
+                }
+            },
         )
         // Terminal
         LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp)) {
