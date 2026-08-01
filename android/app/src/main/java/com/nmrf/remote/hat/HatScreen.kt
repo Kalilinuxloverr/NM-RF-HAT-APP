@@ -113,6 +113,7 @@ private fun ConnectedView(vm: HatViewModel) {
     val lines by vm.scrollback.collectAsState()
     val listState = rememberLazyListState()
     var input by remember { mutableStateOf("") }
+    var stealthOff by remember { mutableStateOf(false) }
 
     LaunchedEffect(lines.size) { if (lines.isNotEmpty()) listState.animateScrollToItem(lines.size - 1) }
 
@@ -121,7 +122,7 @@ private fun ConnectedView(vm: HatViewModel) {
             "HAT-STEUERUNG", "verbunden", help = HAT_HELP,
             action = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    HeaderChip("STEALTH") { vm.send("stealth") }
+                    HeaderChip(if (stealthOff) "LICHT" else "STEALTH") { stealthOff = !stealthOff; vm.send(if (stealthOff) "stealth on" else "stealth off") }
                     Spacer(Modifier.width(8.dp))
                     HeaderChip("TRENNEN") { vm.disconnect() }
                 }
