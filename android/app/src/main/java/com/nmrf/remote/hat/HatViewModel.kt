@@ -46,7 +46,7 @@ class HatViewModel(
         if (l.startsWith("SPEC:")) {
             val vals = l.removePrefix("SPEC:").split(",").mapNotNull { it.trim().toFloatOrNull() }
             if (vals.isNotEmpty()) {
-                val col = FloatArray(vals.size) { (vals[it] / 125f).coerceIn(0f, 1f) }
+                val col = FloatArray(vals.size) { (vals[it] / 100f).coerceIn(0f, 1f) }
                 specCols.addLast(col)
                 while (specCols.size > 120) specCols.removeFirst()
                 _spectrum.value = specCols.toList()
