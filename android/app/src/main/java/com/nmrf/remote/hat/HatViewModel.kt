@@ -1,5 +1,6 @@
 package com.nmrf.remote.hat
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nmrf.remote.ble.BleDevice
@@ -24,10 +25,15 @@ class HatViewModel(
     private val _candidates = MutableStateFlow<List<BleDevice>>(emptyList())
     val candidates: StateFlow<List<BleDevice>> = _candidates.asStateFlow()
 
-    // nRF24-Spektrum vom HAT (Kanäle 0..1, Verlauf links->rechts)
     private val _spectrum = MutableStateFlow<List<FloatArray>>(emptyList())
     val spectrum: StateFlow<List<FloatArray>> = _spectrum.asStateFlow()
     private val specCols = ArrayDeque<FloatArray>()
+
+    // CYD-Screen-Mirror
+    private val replay = TftReplay()
+    private val _frame = MutableStateFlow(0)
+    val frame: StateFlow<Int> = _frame.asStateFlow()
+    fun screenBitmap(): Bitmap? = replay.bmp
 
     private var scanJob: Job? = null
     private var reconnectJob: Job? = null
@@ -35,6 +41,7 @@ class HatViewModel(
 
     init {
         viewModelScope.launch { link.lines.collect { onLine(it) } }
+        viewModelScope.launch { link.packets.collect { replay.apply(it); _frame.value = _frame.value + 1 } }
         viewModelScope.launch { link.state.collect { onState(it) } }
         prefs.lastHat?.takeIf { it.isNotBlank() }?.let {
             append("· Auto-Reconnect: $it")
@@ -68,8 +75,7 @@ class HatViewModel(
     private fun scheduleReconnect() {
         if (reconnectJob != null) return
         reconnectJob = viewModelScope.launch {
-            delay(2500)
-            reconnectJob = null
+            delay(2500); reconnectJob = null
             val addr = prefs.lastHat
             if (!userDisconnected && !addr.isNullOrBlank()) link.connect(addr, autoConnect = true)
         }
@@ -90,8 +96,7 @@ class HatViewModel(
     private fun stopScan() { scanJob?.cancel(); scanJob = null; _candidates.value = emptyList() }
 
     fun connect(address: String) {
-        userDisconnected = false
-        prefs.lastHat = address
+        userDisconnected = false; prefs.lastHat = address
         cancelReconnect(); stopScan()
         append("· verbinde $address …")
         link.connect(address, autoConnect = false)

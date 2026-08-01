@@ -37,6 +37,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontFamily
@@ -138,11 +143,14 @@ private fun ConnectedView(vm: HatViewModel) {
             TabChip("TERMINAL", tab == 1) { tab = 1 }
             Spacer(Modifier.width(8.dp))
             TabChip("SPEKTRUM", tab == 2) { tab = 2 }
+            Spacer(Modifier.width(8.dp))
+            TabChip("MIRROR", tab == 3) { tab = 3 }
         }
         when (tab) {
             0 -> ControlPanel(vm, stealthOff) { on -> stealthOff = on; vm.send(if (on) "stealth on" else "stealth off") }
             1 -> TerminalView(vm)
-            else -> SpectrumView(vm)
+            2 -> SpectrumView(vm)
+            else -> MirrorView(vm)
         }
     }
 }
@@ -296,4 +304,36 @@ private fun NavBtn(label: String, onClick: () -> Unit) {
             .border(1.dp, MatrixGreenDark, RoundedCornerShape(6.dp)).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Text(label, color = MatrixGreen, fontSize = 18.sp) }
+}
+
+@Composable
+private fun MirrorView(vm: HatViewModel) {
+    val frame by vm.frame.collectAsState()
+    DisposableEffect(Unit) {
+        vm.send("mirror on")
+        onDispose { vm.send("mirror off") }
+    }
+    Column(Modifier.fillMaxSize().padding(12.dp)) {
+        Text("CYD-SCREEN (live)", color = MatrixGreen, style = MaterialTheme.typography.labelMedium)
+        Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                @Suppress("UNUSED_EXPRESSION") frame
+                val bmp = vm.screenBitmap() ?: return@Canvas
+                val ib = bmp.asImageBitmap()
+                val ar = bmp.width.toFloat() / bmp.height
+                var dw = size.width
+                var dh = dw / ar
+                if (dh > size.height) { dh = size.height; dw = dh * ar }
+                val dx = ((size.width - dw) / 2f).toInt()
+                val dy = ((size.height - dh) / 2f).toInt()
+                drawImage(
+                    ib,
+                    srcOffset = IntOffset.Zero, srcSize = IntSize(bmp.width, bmp.height),
+                    dstOffset = IntOffset(dx, dy), dstSize = IntSize(dw.toInt(), dh.toInt()),
+                    filterQuality = FilterQuality.None,
+                )
+            }
+        }
+        NavPad(vm)
+    }
 }

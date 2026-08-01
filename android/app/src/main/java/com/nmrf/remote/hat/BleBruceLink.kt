@@ -31,8 +31,11 @@ class BleBruceLink(context: Context) : BruceLink {
     override val state: StateFlow<LinkState> = _state.asStateFlow()
     private val _lines = MutableSharedFlow<String>(extraBufferCapacity = 512)
     override val lines: Flow<String> = _lines.asSharedFlow()
+    private val _packets = MutableSharedFlow<ByteArray>(extraBufferCapacity = 512)
+    override val packets: Flow<ByteArray> = _packets.asSharedFlow()
 
     private val assembler = LineAssembler()
+    private var pending = ByteArray(0)   // Demux-Puffer (Binär vs. Text)
     private var gatt: BluetoothGatt? = null
     private var rxChar: BluetoothGattCharacteristic? = null
     private var mtu = 23
@@ -61,11 +64,33 @@ class BleBruceLink(context: Context) : BruceLink {
     }
 
     private fun cleanup() {
-        gatt = null
-        rxChar = null
+        gatt = null; rxChar = null
         synchronized(queue) { queue.clear() }
-        writing = false
+        writing = false; pending = ByteArray(0)
         _state.value = LinkState.DISCONNECTED
+    }
+
+    /** Trennt Binär-Draw-Pakete (0xAA + Längenbyte) von ASCII-Text (nie 0xAA). */
+    private fun demux(data: ByteArray) {
+        pending += data
+        var off = 0
+        while (off < pending.size) {
+            val b = pending[off].toInt() and 0xFF
+            if (b == 0xAA) {
+                if (pending.size - off < 2) break
+                val size = pending[off + 1].toInt() and 0xFF
+                if (size < 3) { off++; continue }   // Robustheit gegen Müll
+                if (pending.size - off < size) break
+                _packets.tryEmit(pending.copyOfRange(off, off + size))
+                off += size
+            } else {
+                var end = off
+                while (end < pending.size && (pending[end].toInt() and 0xFF) != 0xAA) end++
+                assembler.feed(pending.copyOfRange(off, end)).forEach { _lines.tryEmit(it) }
+                off = end
+            }
+        }
+        pending = if (off >= pending.size) ByteArray(0) else pending.copyOfRange(off, pending.size)
     }
 
     @SuppressLint("MissingPermission")
@@ -89,10 +114,7 @@ class BleBruceLink(context: Context) : BruceLink {
         }
 
         @SuppressLint("MissingPermission")
-        override fun onMtuChanged(g: BluetoothGatt, m: Int, status: Int) {
-            mtu = m
-            g.discoverServices()
-        }
+        override fun onMtuChanged(g: BluetoothGatt, m: Int, status: Int) { mtu = m; g.discoverServices() }
 
         @SuppressLint("MissingPermission")
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
@@ -116,10 +138,7 @@ class BleBruceLink(context: Context) : BruceLink {
         }
 
         override fun onCharacteristicChanged(g: BluetoothGatt, ch: BluetoothGattCharacteristic) {
-            if (ch.uuid == NUS_TX) {
-                val data = ch.value ?: return
-                assembler.feed(data).forEach { _lines.tryEmit(it) }
-            }
+            if (ch.uuid == NUS_TX) ch.value?.let { demux(it) }
         }
 
         override fun onCharacteristicWrite(g: BluetoothGatt, ch: BluetoothGattCharacteristic, status: Int) {
