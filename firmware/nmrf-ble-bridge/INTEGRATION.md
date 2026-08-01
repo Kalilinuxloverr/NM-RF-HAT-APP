@@ -101,3 +101,13 @@ Die App (MIRROR-Tab) sendet `mirror on` beim Öffnen und demuxt den gemischten S
 (0xAA = Binär-Draw-Op, sonst Text/Echo/SPEC; ASCII enthält nie 0xAA), spielt die Ops per
 `TftReplay` auf ein Bitmap = Live-CYD-Screen. `tft` ist über `globals.h` verfügbar.
 Verifiziert: kompiliert für env CYD-2432S028.
+
+## v2d — Tap-to-Touch + einstellbares Jammer-PA
+- Bridge (`ble_remote.cpp`): `touch x y` -> setzt `touchPoint` + `AnyKeyPress` und ruft `touchHeatMap()`
+  (Menü-Region-Nav wie ein Fingertipp; Tastatur pixelgenau). Braucht `#include "core/utils.h"`.
+  `jampa 0..3` -> `nrfSetJamPA()`.
+- `src/modules/NRF24/nrf_jammer.cpp`: `static rf24_pa_dbm_e jamPA = RF24_PA_MAX;` + `void nrfSetJamPA(int)`
+  (nach den Includes); `setPALevel(RF24_PA_MAX)`/`startConstCarrier(RF24_PA_MAX,50)` -> `jamPA`.
+  Deklaration `void nrfSetJamPA(int level);` in `nrf_jammer.h`. Wirkt beim (Neu-)Start des Jammers.
+- App: MIRROR-Tab antippen -> `touch <x> <y>` (Bild-Koordinate auf 240x320 gemappt); HAT-BEFEHLE-Tab
+  hat eine nRF24-Power-Karte (MIN/LOW/HIGH/MAX -> `jampa`).

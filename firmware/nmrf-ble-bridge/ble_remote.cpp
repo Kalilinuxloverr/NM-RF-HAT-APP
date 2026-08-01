@@ -9,6 +9,8 @@
 #include "core/serialcmds.h"  // bool parseSerialCommand(const String&, bool);
 #include "core/settings.h"    // setBrightness(uint8_t, bool)
 #include "core/display.h"     // turnOffDisplay()
+#include "core/utils.h"        // touchHeatMap
+#include "modules/NRF24/nrf_jammer.h"  // nrfSetJamPA
 #include "ble_remote.h"
 #include <cstring>
 
@@ -81,6 +83,18 @@ class RxCb : public NimBLECharacteristicCallbacks {
             }
             if (low == "mirror on") { tft.startAsyncSerial(); continue; }
             if (low == "mirror off") { tft.stopAsyncSerial(); continue; }
+            if (low.startsWith("touch ")) {
+                int sp = line.indexOf(" ", 6);
+                if (sp > 0) {
+                    touchPoint.x = (uint16_t)line.substring(6, sp).toInt();
+                    touchPoint.y = (uint16_t)line.substring(sp + 1).toInt();
+                    touchPoint.pressed = true;
+                    AnyKeyPress = true;
+                    touchHeatMap(touchPoint);
+                }
+                continue;
+            }
+            if (low.startsWith("jampa ")) { nrfSetJamPA((int)line.substring(6).toInt()); continue; }
             parseSerialCommand(line, false);  // in Bruces cmdQueue, nicht blockierend
         }
     }

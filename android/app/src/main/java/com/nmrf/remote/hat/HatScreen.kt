@@ -37,6 +37,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
@@ -197,6 +199,17 @@ private fun ControlPanel(vm: HatViewModel, stealthOff: Boolean, onStealth: (Bool
                 NavPad(vm)
             }
         }
+        item {
+            MatrixCard {
+                SectionLabel("nRF24-JAMMER POWER (Default MAX)")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    HeaderChip("MIN") { vm.send("jampa 0") }
+                    HeaderChip("LOW") { vm.send("jampa 1") }
+                    HeaderChip("HIGH") { vm.send("jampa 2") }
+                    HeaderChip("MAX") { vm.send("jampa 3") }
+                }
+            }
+        }
         item { Spacer(Modifier.height(12.dp)) }
     }
 }
@@ -315,9 +328,25 @@ private fun MirrorView(vm: HatViewModel) {
         onDispose { vm.send("mirror off") }
     }
     Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Text("CYD-SCREEN (live)", color = MatrixGreen, style = MaterialTheme.typography.labelMedium)
+        Text("CYD-SCREEN (live · antippen = Touch)", color = MatrixGreen, style = MaterialTheme.typography.labelMedium)
         Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize()) {
+            Canvas(
+                Modifier.fillMaxSize().pointerInput(Unit) {
+                    detectTapGestures { off ->
+                        val bb = vm.screenBitmap() ?: return@detectTapGestures
+                        val cw = size.width.toFloat(); val ch = size.height.toFloat()
+                        val ar = bb.width.toFloat() / bb.height
+                        var dw = cw; var dh = dw / ar
+                        if (dh > ch) { dh = ch; dw = dh * ar }
+                        val dx = (cw - dw) / 2f; val dy = (ch - dh) / 2f
+                        if (off.x >= dx && off.x <= dx + dw && off.y >= dy && off.y <= dy + dh) {
+                            val tx = ((off.x - dx) / dw * bb.width).toInt().coerceIn(0, bb.width - 1)
+                            val ty = ((off.y - dy) / dh * bb.height).toInt().coerceIn(0, bb.height - 1)
+                            vm.send("touch $tx $ty")
+                        }
+                    }
+                },
+            ) {
                 @Suppress("UNUSED_EXPRESSION") frame
                 val bmp = vm.screenBitmap() ?: return@Canvas
                 val ib = bmp.asImageBitmap()
