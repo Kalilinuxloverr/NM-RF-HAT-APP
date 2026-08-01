@@ -1,15 +1,16 @@
 package com.nmrf.remote.hat
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,6 +37,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,7 +47,7 @@ import com.nmrf.remote.ui.components.HeaderChip
 import com.nmrf.remote.ui.components.MatrixCard
 import com.nmrf.remote.ui.components.ScreenHeader
 import com.nmrf.remote.ui.components.SectionLabel
-import com.nmrf.remote.ui.theme.MatrixBlack
+import com.nmrf.remote.ui.components.heat
 import com.nmrf.remote.ui.theme.MatrixGreen
 import com.nmrf.remote.ui.theme.MatrixGreenDark
 import com.nmrf.remote.ui.theme.MatrixPanel
@@ -55,8 +58,8 @@ import com.nmrf.remote.wifi.PermissionInfo
 private const val HAT_HELP =
     "BLE-Fernsteuerung der NM-RF-HAT-Firmware (NUS). BEFEHLE: gruppierte CLI-Kurzbefehle + " +
         "Stealth/Helligkeit + Nav-Pad (steuert die On-Screen-Menüs, z. B. nRF24-Jammer/Spektrum). " +
-        "TERMINAL: freie Befehle + Antworten der Firmware. Befehle mit Argumenten (z. B. subghz tx) " +
-        "im Terminal tippen."
+        "TERMINAL: freie Befehle + Antworten. SPEKTRUM: Live-nRF24-Wasserfall, wenn am HAT das " +
+        "Spektrum offen ist. Befehle mit Argumenten (subghz tx …) im Terminal tippen."
 
 @Composable
 fun HatScreen(vm: HatViewModel, hasPermission: Boolean, onRequestPermission: () -> Unit) {
@@ -133,9 +136,14 @@ private fun ConnectedView(vm: HatViewModel) {
             TabChip("BEFEHLE", tab == 0) { tab = 0 }
             Spacer(Modifier.width(8.dp))
             TabChip("TERMINAL", tab == 1) { tab = 1 }
+            Spacer(Modifier.width(8.dp))
+            TabChip("SPEKTRUM", tab == 2) { tab = 2 }
         }
-        if (tab == 0) ControlPanel(vm, stealthOff, onStealth = { on -> stealthOff = on; vm.send(if (on) "stealth on" else "stealth off") })
-        else TerminalView(vm)
+        when (tab) {
+            0 -> ControlPanel(vm, stealthOff) { on -> stealthOff = on; vm.send(if (on) "stealth on" else "stealth off") }
+            1 -> TerminalView(vm)
+            else -> SpectrumView(vm)
+        }
     }
 }
 
@@ -210,6 +218,56 @@ private fun TerminalView(vm: HatViewModel) {
             )
             Spacer(Modifier.width(8.dp))
             HeaderChip("SEND") { vm.send(input); input = "" }
+        }
+    }
+}
+
+@Composable
+private fun SpectrumView(vm: HatViewModel) {
+    val cols by vm.spectrum.collectAsState()
+    Column(Modifier.fillMaxSize().padding(12.dp)) {
+        if (cols.isEmpty()) {
+            Text("Kein nRF24-Spektrum.", color = MatrixGreen)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Öffne am HAT über das Nav-Pad das nRF24-Spektrum — die Kanaldaten (2.4 GHz) streamen dann live hierher.",
+                style = MaterialTheme.typography.bodySmall, color = MatrixTextDim,
+            )
+        } else {
+            Text(
+                "nRF24 · 2.4 GHz · ${cols.lastOrNull()?.size ?: 0} Kanäle · unten = CH0",
+                color = MatrixGreen, style = MaterialTheme.typography.labelMedium,
+            )
+            Spectrogram2D(cols, Modifier.fillMaxWidth().weight(1f).padding(vertical = 6.dp))
+            cols.lastOrNull()?.let { SpectrumBars(it, Modifier.fillMaxWidth().height(70.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun Spectrogram2D(cols: List<FloatArray>, modifier: Modifier) {
+    Canvas(modifier) {
+        if (cols.isEmpty()) return@Canvas
+        val colW = size.width / cols.size
+        cols.forEachIndexed { x, col ->
+            if (col.isEmpty()) return@forEachIndexed
+            val cellH = size.height / col.size
+            col.forEachIndexed { b, v ->
+                val y = size.height - (b + 1) * cellH
+                drawRect(heat(v), topLeft = Offset(x * colW, y), size = Size(colW + 1f, cellH + 1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpectrumBars(col: FloatArray, modifier: Modifier) {
+    Canvas(modifier) {
+        if (col.isEmpty()) return@Canvas
+        val bw = size.width / col.size
+        col.forEachIndexed { i, v ->
+            val h = size.height * v
+            drawRect(heat(v), topLeft = Offset(i * bw, size.height - h), size = Size(bw * 0.85f, h))
         }
     }
 }

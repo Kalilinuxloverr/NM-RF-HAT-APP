@@ -24,16 +24,35 @@ class HatViewModel(
     private val _candidates = MutableStateFlow<List<BleDevice>>(emptyList())
     val candidates: StateFlow<List<BleDevice>> = _candidates.asStateFlow()
 
+    // nRF24-Spektrum vom HAT (Kanäle 0..1, Verlauf links->rechts)
+    private val _spectrum = MutableStateFlow<List<FloatArray>>(emptyList())
+    val spectrum: StateFlow<List<FloatArray>> = _spectrum.asStateFlow()
+    private val specCols = ArrayDeque<FloatArray>()
+
     private var scanJob: Job? = null
     private var reconnectJob: Job? = null
     private var userDisconnected = false
 
     init {
-        viewModelScope.launch { link.lines.collect { append(it) } }
+        viewModelScope.launch { link.lines.collect { onLine(it) } }
         viewModelScope.launch { link.state.collect { onState(it) } }
         prefs.lastHat?.takeIf { it.isNotBlank() }?.let {
             append("· Auto-Reconnect: $it")
             link.connect(it, autoConnect = true)
+        }
+    }
+
+    private fun onLine(l: String) {
+        if (l.startsWith("SPEC:")) {
+            val vals = l.removePrefix("SPEC:").split(",").mapNotNull { it.trim().toFloatOrNull() }
+            if (vals.isNotEmpty()) {
+                val col = FloatArray(vals.size) { (vals[it] / 125f).coerceIn(0f, 1f) }
+                specCols.addLast(col)
+                while (specCols.size > 120) specCols.removeFirst()
+                _spectrum.value = specCols.toList()
+            }
+        } else {
+            append(l)
         }
     }
 
@@ -79,7 +98,6 @@ class HatViewModel(
     }
 
     fun disconnect() { userDisconnected = true; cancelReconnect(); link.disconnect() }
-    fun forget() { prefs.lastHat = null; userDisconnected = true; cancelReconnect(); link.disconnect() }
     fun send(cmd: String) { if (cmd.isNotBlank()) { append("> $cmd"); link.send(cmd) } }
 
     private fun append(s: String) { _scrollback.value = (_scrollback.value + s).takeLast(500) }
