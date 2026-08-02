@@ -54,7 +54,12 @@ class HatViewModel(
     }
 
     // --- Mirror (BLE-Standard) / WLAN-Umschaltung ---
-    fun mirrorEnter() { if (!_wifiActive.value) link.send("mirror on") }
+    fun mirrorEnter() {
+        if (!_wifiActive.value) {
+            link.send("mirror on")
+            viewModelScope.launch { delay(300); link.send("nav next"); delay(120); link.send("nav prev") }
+        }
+    }
     fun mirrorLeave() { link.send("mirror off"); if (_wifiActive.value) stopWifiMirror() }
 
     fun startWifiMirror() {

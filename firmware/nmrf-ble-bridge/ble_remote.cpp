@@ -101,7 +101,7 @@ class RxCb : public NimBLECharacteristicCallbacks {
             if (low.startsWith("jampa ")) { nrfSetJamPA((int)line.substring(6).toInt()); continue; }
             if (low == "webon") {
                 bruceConfig.setWifiApCreds("NMRF-HAT", "nmrflab1");
-                if (!WiFi.isConnected()) wifiConnectMenu(WIFI_AP);
+                _setupAP();  // non-blocking SoftAP (kein Menü)
                 if (!server) {
                     server = (AsyncWebServer *)malloc(sizeof(AsyncWebServer));
                     new (server) AsyncWebServer(80);
