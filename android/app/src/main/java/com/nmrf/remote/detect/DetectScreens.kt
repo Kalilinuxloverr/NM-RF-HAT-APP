@@ -87,6 +87,9 @@ private val DETECT_TOOLS = listOf(
     DetectTool("spectrum", "Spektrum", "📊", "Kanal-Wasserfall live", StatusActive),
     DetectTool("capture", "Capture", "⏺", "Session + CSV/JSON-Export", StatusOk),
     DetectTool("wardrive", "Wardrive", "🗺", "GPS-Karte · KML/WiGLE/GPX", StatusOk),
+    DetectTool("lan", "LAN-Scanner", "🖧", "Hosts · Ports · Services", StatusData),
+    DetectTool("capimport", "Capture-Import", "📥", "airodump/WiGLE/pcap", StatusOk),
+    DetectTool("terminal", "Terminal", "⌨", "On-Device-Shell (su)", StatusActive),
     DetectTool("adinspect", "AD-Inspektor", "🧬", "Advertisement zerlegen", StatusData),
 )
 
@@ -110,6 +113,9 @@ fun DetectHub(onBack: () -> Unit) {
         "spectrum" -> { val p = rememberPermissions(FINE); SpectrumScreen(back, wifi, p.allGranted, p.request) }
         "capture" -> { val p = rememberPermissions(remember { blePerms() + FINE }); CaptureScreen(back, ble, wifi, p.allGranted, p.request) }
         "wardrive" -> { val p = rememberPermissions(remember { blePerms() + FINE }); WardriveScreen(back, ble, wifi, p.allGranted, p.request) }
+        "lan" -> LanScanScreen(back)
+        "capimport" -> CaptureImportScreen(back)
+        "terminal" -> TerminalScreen(back)
         "adinspect" -> { val p = rememberPermissions(remember { blePerms() }); AdInspectorScreen(back, ble, p.allGranted, p.request) }
         else -> DetectGrid(onBack) { sel = it }
     }

@@ -93,4 +93,41 @@ class AnalyzersTest {
         assertTrue(csv.contains("WigleWifi-1.4"))
         assertTrue(kml.contains("11.575421,48.137432,0"))  // KML: lon,lat,alt
     }
+
+    // --- LAN-Scanner ------------------------------------------------------
+
+    @Test fun netHelpers() {
+        assertEquals("192.168.1.5", Net.leIntToIp(0x0501A8C0))   // little-endian
+        val hosts = Net.slash24Hosts("192.168.1.5")
+        assertEquals(254, hosts.size)
+        assertEquals("192.168.1.1", hosts.first())
+        assertEquals("192.168.1.254", hosts.last())
+        assertEquals("https", Net.serviceName(443))
+    }
+
+    // --- Capture-Import ---------------------------------------------------
+
+    @Test fun airodumpCsvParses() {
+        val csv = "BSSID, First time seen, Last time seen, channel, Speed, Privacy, Cipher, Authentication, Power, # beacons, # IV, LAN IP, ID-length, ESSID, Key\n" +
+            "AA:BB:CC:DD:EE:FF, 2024-01-01 10:00:00, 2024-01-01 10:05:00, 6, 130, WPA2, CCMP, PSK, -40, 100, 0, 0.0.0.0, 8, MyNet, \n" +
+            "\n" +
+            "Station MAC, First time seen, Last time seen, Power, # packets, BSSID, Probed ESSIDs\n" +
+            "11:22:33:44:55:66, 2024-01-01 10:00:00, 2024-01-01 10:05:00, -50, 20, AA:BB:CC:DD:EE:FF, HomeWifi\n"
+        val r = parseAirodumpCsv(csv)
+        assertEquals(1, r.aps.size)
+        assertEquals("MyNet", r.aps[0].essid)
+        assertEquals(1, r.stations.size)
+        assertEquals("HomeWifi", r.stations[0].probes)
+    }
+
+    @Test fun pcapMagicRecognised() {
+        val hdr = byteArrayOf(
+            0xD4.toByte(), 0xC3.toByte(), 0xB2.toByte(), 0xA1.toByte(),  // LE magic
+            2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,             // version/zone/sigfigs/snaplen
+            105, 0, 0, 0,                                                // linktype 802.11
+        )
+        val r = parsePcapSummary(hdr)
+        assertEquals("pcap", r?.kind)
+        assertNull(parsePcapSummary(byteArrayOf(1, 2, 3)))              // zu kurz → null
+    }
 }
