@@ -17,3 +17,16 @@ val MatrixRed = Color(0xFFFF4D4D)
 val NeonGreen = MatrixGreen
 val NeonCyan = Color(0xFF35E0FF)
 val NeonMagenta = Color(0xFFFF3D9A)
+
+// Elevation — Tiefe statt einer einzigen Fläche
+val Elev1 = MatrixPanel                 // Basis-Karte (bestehend)
+val Elev2 = Color(0xFF0B1E13)           // gehobene / aktive Karte
+val Elev3 = Color(0xFF11301E)           // Fokus / Hover
+val LineSoft = Color(0xFF0A2213)        // feine Trennlinie
+
+// Semantischer Status-Ramp — Farbe trägt Bedeutung, nicht Deko
+val StatusOk = MatrixGreen              // sicher / normal
+val StatusActive = MatrixAmber          // aktiv / scannt
+val StatusData = NeonCyan               // Datenpunkt / Messwert
+val StatusWarn = Color(0xFFFF9F1C)      // Auffälligkeit
+val StatusAlert = MatrixRed             // Bedrohung / Alarm

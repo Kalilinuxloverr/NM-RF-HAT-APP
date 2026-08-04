@@ -24,6 +24,7 @@ import com.nmrf.remote.ble.BleScanner
 import com.nmrf.remote.ble.BleScannerScreen
 import com.nmrf.remote.ble.BleScannerViewModel
 import com.nmrf.remote.ble.GattProbe
+import com.nmrf.remote.detect.DetectHub
 import com.nmrf.remote.hat.BleBruceLink
 import com.nmrf.remote.hat.HatScreen
 import com.nmrf.remote.hat.HatViewModel
@@ -32,7 +33,7 @@ import com.nmrf.remote.wifi.WifiAnalyzerScreen
 import com.nmrf.remote.wifi.WifiAnalyzerViewModel
 import com.nmrf.remote.wifi.WifiScanner
 
-enum class Screen { HOME, WIFI, BLE, AUDIO, HAT, TOOLS, SETTINGS }
+enum class Screen { HOME, WIFI, BLE, AUDIO, HAT, TOOLS, SETTINGS, DETECT }
 
 private fun blePermsFor(): List<String> =
     if (Build.VERSION.SDK_INT >= 31) {
@@ -62,6 +63,7 @@ fun AppRoot() {
             Screen.AUDIO -> AudioTab()
             Screen.HAT -> HatTab()
             Screen.TOOLS -> ToolsScreen(onBack = { screen = Screen.HOME })
+            Screen.DETECT -> DetectHub(onBack = { screen = Screen.HOME })
             Screen.SETTINGS -> SettingsScreen(onBack = { screen = Screen.HOME })
         }
     }
