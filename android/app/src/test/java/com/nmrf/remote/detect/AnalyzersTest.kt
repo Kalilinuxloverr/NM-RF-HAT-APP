@@ -77,4 +77,20 @@ class AnalyzersTest {
         assertEquals("Manufacturer Specific", BleAdParser.typeName(0xFF))
         assertNull(TrackerAnalyzer.analyze(emptyList(), 0L).firstOrNull())
     }
+
+    // --- Wardrive ---------------------------------------------------------
+
+    @Test fun haversineOneDegreeLatIsAbout111km() {
+        val m = haversineM(48.0, 11.0, 49.0, 11.0)
+        assertTrue("erwartet ~111 km, war $m", m in 110_000.0..112_000.0)
+    }
+
+    @Test fun exportersUseDotDecimalNotComma() {
+        val obs = listOf(GeoObs("WIFI", "aa:bb:cc:dd:ee:ff", "Net", -55, 48.137432, 11.575421, 1_700_000_000_000L, 6, "[WPA2]"))
+        val csv = toWigleCsv(obs)
+        val kml = toKml(obs)
+        assertTrue(csv.contains("48.137432"))       // Punkt, kein Komma (Locale.US)
+        assertTrue(csv.contains("WigleWifi-1.4"))
+        assertTrue(kml.contains("11.575421,48.137432,0"))  // KML: lon,lat,alt
+    }
 }
